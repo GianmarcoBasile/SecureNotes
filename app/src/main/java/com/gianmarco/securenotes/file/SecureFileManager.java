@@ -1,4 +1,4 @@
-package com.gianmarco.securenotes;
+package com.gianmarco.securenotes.file;
 
 import android.content.Context;
 import android.net.Uri;
@@ -8,8 +8,6 @@ import androidx.security.crypto.EncryptedFile;
 import androidx.security.crypto.MasterKey;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;

@@ -1,4 +1,4 @@
-package com.gianmarco.securenotes;
+package com.gianmarco.securenotes.note;
 
 import androidx.room.Dao;
 import androidx.room.Insert;

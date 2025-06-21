@@ -1,4 +1,4 @@
-package com.gianmarco.securenotes;
+package com.gianmarco.securenotes.note;
 
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;

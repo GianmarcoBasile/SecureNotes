@@ -1,4 +1,4 @@
-package com.gianmarco.securenotes;
+package com.gianmarco.securenotes.file;
 
 import androidx.room.Entity;
 import androidx.room.Ignore;

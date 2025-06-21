@@ -11,7 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.gianmarco.securenotes.R;
-import com.gianmarco.securenotes.SecureFile;
+import com.gianmarco.securenotes.file.SecureFile;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;

@@ -1,4 +1,4 @@
-package com.gianmarco.securenotes;
+package com.gianmarco.securenotes.fragment;
 
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -13,6 +13,11 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.gianmarco.securenotes.note.Note;
+import com.gianmarco.securenotes.note.NoteRepository;
+import com.gianmarco.securenotes.R;
+import com.gianmarco.securenotes.viewmodel.EditorViewModel;
+
 public class EditorFragment extends Fragment {
 
     private static final String ARG_NOTE_ID = "note_id";
@@ -23,6 +28,7 @@ public class EditorFragment extends Fragment {
     private NoteRepository noteRepository;
     private long currentNoteId = INVALID_NOTE_ID;
     private Note currentNote = null;
+    private EditorViewModel viewModel;
 
     public static EditorFragment newInstance(long noteId) {
         EditorFragment fragment = new EditorFragment();
@@ -39,7 +45,14 @@ public class EditorFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        noteRepository = new NoteRepository(requireContext());
+        NoteRepository noteRepository = new NoteRepository(requireContext());
+        viewModel = new ViewModelProvider(this, new ViewModelProvider.Factory() {
+            @NonNull
+            @Override
+            public <T extends androidx.lifecycle.ViewModel> T create(@NonNull Class<T> modelClass) {
+                return (T) new EditorViewModel(noteRepository);
+            }
+        }).get(EditorViewModel.class);
         if (getArguments() != null) {
             currentNoteId = getArguments().getLong(ARG_NOTE_ID, INVALID_NOTE_ID);
         }
@@ -60,7 +73,8 @@ public class EditorFragment extends Fragment {
         Button saveButton = view.findViewById(R.id.btnSaveNote);
 
         if (currentNoteId != INVALID_NOTE_ID) {
-            noteRepository.getNoteById(currentNoteId).observe(getViewLifecycleOwner(), note -> {
+            viewModel.loadNoteById(currentNoteId);
+            viewModel.getNote().observe(getViewLifecycleOwner(), note -> {
                 if (note != null) {
                     currentNote = note;
                     titleEditText.setText(note.getTitle());
@@ -77,7 +91,7 @@ public class EditorFragment extends Fragment {
         String content = contentEditText.getText().toString().trim();
 
         if (TextUtils.isEmpty(title)) {
-            Toast.makeText(getContext(), "Title cannot be empty", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Il titolo non può essere vuoto", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -89,9 +103,27 @@ public class EditorFragment extends Fragment {
         currentNote.setContent(content);
         currentNote.setLastModified(System.currentTimeMillis());
 
-        noteRepository.insertOrUpdate(currentNote);
+        viewModel.saveNote(currentNote);
 
-        Toast.makeText(getContext(), "Note saved", Toast.LENGTH_SHORT).show();
+        Toast.makeText(getContext(), "Nota salvata", Toast.LENGTH_SHORT).show();
         getParentFragmentManager().popBackStack();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Nascondi bottom navigation e FAB
+        if (getActivity() instanceof com.gianmarco.securenotes.MainActivity) {
+            ((com.gianmarco.securenotes.MainActivity) getActivity()).hideBottomNavAndFab();
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // Mostra di nuovo bottom navigation e FAB
+        if (getActivity() instanceof com.gianmarco.securenotes.MainActivity) {
+            ((com.gianmarco.securenotes.MainActivity) getActivity()).showBottomNavAndFab();
+        }
     }
 } 

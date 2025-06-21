@@ -1,8 +1,10 @@
-package com.gianmarco.securenotes;
+package com.gianmarco.securenotes.note;
 
 import android.content.Context;
 import android.util.Log;
 import androidx.lifecycle.LiveData;
+
+import com.gianmarco.securenotes.SecureNoteDB;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -28,8 +30,6 @@ public class NoteRepository {
                 noteDao.insertOrUpdate(note);
             } catch (Exception e) {
                 Log.e(TAG, "Error inserting/updating note: " + e.getMessage());
-                // Se c'è un errore di database, prova a resettarlo
-                handleDatabaseError();
             }
         });
     }
@@ -48,21 +48,11 @@ public class NoteRepository {
                 noteDao.deleteById(noteId);
             } catch (Exception e) {
                 Log.e(TAG, "Error deleting note: " + e.getMessage());
-                handleDatabaseError();
             }
         });
     }
 
     public List<Note> getAllNotesSync() {
         return noteDao.getAllNotesSync();
-    }
-
-    private void handleDatabaseError() {
-        try {
-            Log.w(TAG, "Attempting to reset database due to error...");
-            SecureNoteDB.resetDatabase(context);
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to reset database: " + e.getMessage());
-        }
     }
 } 

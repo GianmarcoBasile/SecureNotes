@@ -1,4 +1,4 @@
-package com.gianmarco.securenotes;
+package com.gianmarco.securenotes.file;
 
 import androidx.lifecycle.LiveData;
 import androidx.room.Dao;

@@ -1,6 +1,8 @@
 [versions]
 agp = "8.9.1"
 androidDatabaseSqlcipher = "4.5.4"
+androidDatabaseSqlcipherVersion = "4.5.0"
+appcompatVersion = "1.6.1"
 biometric = "1.1.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
@@ -9,13 +11,17 @@ appcompat = "1.7.1"
 material = "1.12.0"
 activity = "1.10.1"
 constraintlayout = "2.2.1"
+roomCompiler = "2.6.1"
 roomRuntime = "2.7.2"
+roomRuntimeVersion = "2.6.1"
 securityCrypto = "1.0.0"
 navigationFragment = "2.9.0"
 sqliteFramework = "2.5.2"
 
 [libraries]
 android-database-sqlcipher = { module = "net.zetetic:android-database-sqlcipher", version.ref = "androidDatabaseSqlcipher" }
+android-database-sqlcipher-v450 = { module = "net.zetetic:android-database-sqlcipher", version.ref = "androidDatabaseSqlcipherVersion" }
+appcompat-v161 = { module = "androidx.appcompat:appcompat", version.ref = "appcompatVersion" }
 biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
@@ -25,7 +31,9 @@ material = { group = "com.google.android.material", name = "material", version.r
 activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
 constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomRuntime" }
+room-compiler-v261 = { module = "androidx.room:room-compiler", version.ref = "roomCompiler" }
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
+room-runtime-v261 = { module = "androidx.room:room-runtime", version.ref = "roomRuntimeVersion" }
 security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
 navigation-fragment = { group = "androidx.navigation", name = "navigation-fragment", version.ref = "navigationFragment" }
 sqlite = { module = "androidx.sqlite:sqlite", version.ref = "sqliteFramework" }

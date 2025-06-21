@@ -11,13 +11,24 @@ import androidx.core.content.ContextCompat;
 
 import java.util.concurrent.Executor;
 
+import com.gianmarco.securenotes.fragment.ArchiveFragment;
+import com.gianmarco.securenotes.fragment.DashboardFragment;
+import com.gianmarco.securenotes.fragment.SettingsFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import androidx.fragment.app.Fragment;
 
-public class MainActivity extends AppCompatActivity {
+import android.os.Build;
+import android.Manifest;
+import android.content.pm.PackageManager;
 
+import androidx.core.app.ActivityCompat;
+
+import com.scottyab.rootbeer.RootBeer;
+
+public class MainActivity extends AppCompatActivity {
+    
     // Timeout di sessione in millisecondi (default 3 minuti = 180000 ms)
     private static final long DEFAULT_SESSION_TIMEOUT_MS = 3 * 60 * 1000;
     // Chiave per salvare il timestamp dell'ultima autenticazione
@@ -33,6 +44,26 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Applica la preferenza tema prima di tutto
+        int themeMode = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getInt("theme_mode", androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(themeMode);
+
+        // Se sto cambiando solo il tema, salto autenticazione
+        if (ThemeUtils.shouldSkipAuth(this)) {
+            super.onCreate(savedInstanceState);
+            setContentView(R.layout.activity_main);
+            bottomNavigationView = findViewById(R.id.bottom_navigation);
+            fab = findViewById(R.id.fab_add_note);
+            fragmentContainer = findViewById(R.id.fragment_container);
+            setupBottomNavigation();
+            showUI();
+            int lastSection = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getInt("last_section", R.id.nav_notes);
+            bottomNavigationView.setSelectedItemId(lastSection);
+            getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().remove("last_section").apply();
+            isAuthenticated = true;
+            return;
+        }
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
@@ -44,55 +75,18 @@ public class MainActivity extends AppCompatActivity {
         // Nascondi completamente l'interfaccia finché non c'è autenticazione
         hideUI();
         
+        // Root detection
+        RootBeer rootBeer = new RootBeer(this);
+        if (rootBeer.isRooted()) {
+            Toast.makeText(this, "Dispositivo rootato! L'app verrà chiusa per sicurezza.", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+
         // All'avvio, richiedi autenticazione
         requestAuthenticationIfNeeded();
 
-        // Listener per la selezione delle voci del menu
-        bottomNavigationView.setOnItemSelectedListener(item -> {
-            int itemId = item.getItemId();
-            if (itemId == R.id.nav_notes) {
-                fab.show();
-                navigateTo(new DashboardFragment());
-                return true;
-            } else if (itemId == R.id.nav_archive) {
-                fab.show();
-                navigateTo(new ArchiveFragment());
-                return true;
-            } else if (itemId == R.id.nav_settings) {
-                fab.hide();
-                navigateTo(new SettingsFragment());
-                return true;
-            }
-            return false;
-        });
-
-        // Listener per il click del FAB: gestisce azioni diverse in base alla sezione
-        fab.setOnClickListener(v -> {
-            int selectedItemId = bottomNavigationView.getSelectedItemId();
-            if (selectedItemId == R.id.nav_notes) {
-                // Nella sezione Note: apri EditorFragment per creare una nuova nota
-                hideBottomNavAndFab();
-                getSupportFragmentManager()
-                    .beginTransaction()
-                    .replace(R.id.fragment_container, new EditorFragment())
-                    .addToBackStack("editor")
-                    .commit();
-            } else if (selectedItemId == R.id.nav_archive) {
-                // Nella sezione Archivio: mostra il menu per selezionare tipo di file
-                Fragment currentFragment = getSupportFragmentManager()
-                    .findFragmentById(R.id.fragment_container);
-                if (currentFragment instanceof ArchiveFragment) {
-                    ((ArchiveFragment) currentFragment).showFileTypeMenu();
-                }
-            }
-        });
-
-        // Listener per il backstack dei fragment
-        getSupportFragmentManager().addOnBackStackChangedListener(() -> {
-            if (getSupportFragmentManager().getBackStackEntryCount() == 0) {
-                showBottomNavAndFab();
-            }
-        });
+        setupBottomNavigation();
     }
 
     @Override
@@ -102,6 +96,19 @@ public class MainActivity extends AppCompatActivity {
         if (!isAuthenticated || isSessionExpired()) {
             hideUI();
             requestAuthenticationIfNeeded();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 1002) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permesso concesso, puoi inviare notifiche
+                // testNotifica(); // RIMOSSO
+            } else {
+                android.widget.Toast.makeText(this, "Permesso notifiche negato: le notifiche non saranno mostrate", android.widget.Toast.LENGTH_LONG).show();
+            }
         }
     }
 
@@ -134,7 +141,12 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
                 super.onAuthenticationSucceeded(result);
-                Toast.makeText(getApplicationContext(), "Autenticazione riuscita!", Toast.LENGTH_SHORT).show();
+                // Richiedi permesso notifiche solo dopo autenticazione
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                        ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1002);
+                    }
+                }
                 // Salva il timestamp dell'autenticazione
                 getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
                         .putLong(KEY_LAST_AUTH, System.currentTimeMillis())
@@ -203,5 +215,40 @@ public class MainActivity extends AppCompatActivity {
 
     public BottomNavigationView getBottomNavigationView() {
         return bottomNavigationView;
+    }
+
+    private void setupBottomNavigation() {
+        bottomNavigationView.setOnItemSelectedListener(item -> {
+            int itemId = item.getItemId();
+            if (itemId == R.id.nav_notes) {
+                fab.show();
+                fab.setOnClickListener(v -> {
+                    // Apri EditorFragment per nuova nota
+                    getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.fragment_container, com.gianmarco.securenotes.fragment.EditorFragment.newInstance(-1))
+                        .addToBackStack(null)
+                        .commit();
+                });
+                navigateTo(new com.gianmarco.securenotes.fragment.DashboardFragment());
+                return true;
+            } else if (itemId == R.id.nav_archive) {
+                fab.show();
+                fab.setOnClickListener(v -> {
+                    // Trova il fragment attuale e chiama showFileTypeMenu()
+                    androidx.fragment.app.Fragment current = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+                    if (current instanceof com.gianmarco.securenotes.fragment.ArchiveFragment) {
+                        ((com.gianmarco.securenotes.fragment.ArchiveFragment) current).showFileTypeMenu();
+                    }
+                });
+                navigateTo(new com.gianmarco.securenotes.fragment.ArchiveFragment());
+                return true;
+            } else if (itemId == R.id.nav_settings) {
+                fab.hide();
+                navigateTo(new com.gianmarco.securenotes.fragment.SettingsFragment());
+                return true;
+            }
+            return false;
+        });
     }
 }

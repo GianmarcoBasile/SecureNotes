@@ -1,4 +1,4 @@
-package com.gianmarco.securenotes;
+package com.gianmarco.securenotes.fragment;
 
 import android.app.AlertDialog;
 import android.content.Context;
@@ -18,19 +18,20 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.work.OneTimeWorkRequest;
-import androidx.work.WorkManager;
-import androidx.work.Data;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 
 import java.security.GeneralSecurityException;
 import java.io.IOException;
-import android.os.Build;
-import android.Manifest;
-import android.content.pm.PackageManager;
-import android.provider.Settings;
+
 import androidx.appcompat.app.AppCompatDelegate;
+
+import com.gianmarco.securenotes.ArchivePinManager;
+import com.gianmarco.securenotes.BackupWorker;
+import com.gianmarco.securenotes.MainActivity;
+import com.gianmarco.securenotes.R;
+import com.gianmarco.securenotes.RestoreBackupWorker;
+import com.gianmarco.securenotes.ThemeUtils;
 
 public class SettingsFragment extends Fragment {
 
@@ -83,6 +84,7 @@ public class SettingsFragment extends Fragment {
             }
     );
     private Spinner spinnerTheme;
+    private boolean isChangingPinSwitch = false;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -174,15 +176,24 @@ public class SettingsFragment extends Fragment {
         // Imposta lo stato corrente dello switch
         switchArchivePin.setChecked(archivePinManager.isArchivePinEnabled());
 
+        // Listener per abilitazione
         switchArchivePin.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChangingPinSwitch) return; // evita loop
             if (isChecked) {
-                // Abilita PIN - richiedi di impostarlo
                 showSetPinDialog();
-            } else {
-                // Disabilita PIN
-                archivePinManager.setArchivePinEnabled(false);
-                Toast.makeText(requireContext(), "PIN archivio disabilitato", Toast.LENGTH_SHORT).show();
             }
+        });
+
+        // Listener per disabilitazione: intercetta il tocco
+        switchArchivePin.setOnTouchListener((v, event) -> {
+            if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
+                if (switchArchivePin.isChecked()) {
+                    // Sta tentando di disattivare
+                    showVerifyPinBeforeDisable();
+                    return true; // consuma l'evento
+                }
+            }
+            return false;
         });
 
         btnChangeArchivePin.setOnClickListener(v -> {
@@ -196,29 +207,54 @@ public class SettingsFragment extends Fragment {
 
     private void setupBackupButton() {
         btnExportBackup.setOnClickListener(v -> {
-            // Mostra un dialog per chiedere la password di cifratura
-            AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
-            builder.setTitle("Password backup");
-            builder.setMessage("Inserisci una password per cifrare il backup:");
-            final EditText input = new EditText(requireContext());
-            input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
-            builder.setView(input);
-            builder.setPositiveButton("Procedi", (dialog, which) -> {
-                String password = input.getText().toString();
-                if (password.length() < 6) {
-                    Toast.makeText(requireContext(), "Password troppo corta", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                pendingBackupPassword = password;
-                Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-                intent.addCategory(Intent.CATEGORY_OPENABLE);
-                intent.setType("application/zip");
-                intent.putExtra(Intent.EXTRA_TITLE, "SecureNotesBackup.zip");
-                backupFilePickerLauncher.launch(intent);
-            });
-            builder.setNegativeButton("Annulla", null);
-            builder.show();
+            if (archivePinManager.isArchivePinEnabled()) {
+                // Chiedi il PIN archivio prima di procedere
+                AlertDialog.Builder pinDialog = new AlertDialog.Builder(requireContext());
+                pinDialog.setTitle("PIN Archivio");
+                pinDialog.setMessage("Inserisci il PIN per esportare il backup:");
+                final EditText pinInput = new EditText(requireContext());
+                pinInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD);
+                pinDialog.setView(pinInput);
+                pinDialog.setPositiveButton("Procedi", (dialog, which) -> {
+                    String pin = pinInput.getText().toString();
+                    if (archivePinManager.verifyArchivePin(pin)) {
+                        showBackupPasswordDialog();
+                    } else {
+                        Toast.makeText(requireContext(), "PIN errato", Toast.LENGTH_SHORT).show();
+                    }
+                });
+                pinDialog.setNegativeButton("Annulla", null);
+                pinDialog.show();
+            } else {
+                // Nessun PIN archivio: procedi direttamente
+                showBackupPasswordDialog();
+            }
         });
+    }
+
+    // Dialog separato per la password di backup
+    private void showBackupPasswordDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Password backup");
+        builder.setMessage("Inserisci una password per cifrare il backup:");
+        final EditText input = new EditText(requireContext());
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        builder.setView(input);
+        builder.setPositiveButton("Procedi", (dialog, which) -> {
+            String password = input.getText().toString();
+            if (password.length() < 6) {
+                Toast.makeText(requireContext(), "Password troppo corta", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            pendingBackupPassword = password;
+            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("application/zip");
+            intent.putExtra(Intent.EXTRA_TITLE, "SecureNotesBackup.zip");
+            backupFilePickerLauncher.launch(intent);
+        });
+        builder.setNegativeButton("Annulla", null);
+        builder.show();
     }
 
     private void setupRestoreButton() {
@@ -328,7 +364,7 @@ public class SettingsFragment extends Fragment {
     }
 
     private void startRestoreWorker() {
-        if (pendingRestoreUri == null || pendingRestorePassword == null) return;
+        if (!isAdded() || pendingRestoreUri == null || pendingRestorePassword == null) return;
         androidx.work.Data inputData = new androidx.work.Data.Builder()
                 .putString("restore_password", pendingRestorePassword)
                 .putString("restore_uri", pendingRestoreUri.toString())
@@ -342,8 +378,31 @@ public class SettingsFragment extends Fragment {
         pendingRestoreUri = null;
     }
 
+    private void showVerifyPinBeforeDisable() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Disattiva PIN Archivio");
+        builder.setMessage("Inserisci il PIN attuale per disattivare la protezione dell'archivio:");
+        final EditText input = new EditText(requireContext());
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD);
+        builder.setView(input);
+        builder.setPositiveButton("Conferma", (dialog, which) -> {
+            String pin = input.getText().toString();
+            if (archivePinManager.verifyArchivePin(pin)) {
+                archivePinManager.setArchivePinEnabled(false);
+                isChangingPinSwitch = true;
+                switchArchivePin.setChecked(false);
+                isChangingPinSwitch = false;
+                Toast.makeText(requireContext(), "PIN archivio disabilitato", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(requireContext(), "PIN errato", Toast.LENGTH_SHORT).show();
+            }
+        });
+        builder.setNegativeButton("Annulla", null);
+        builder.show();
+    }
+
     private void setupThemeSpinner() {
-        String[] themeOptions = {"Segui sistema", "Solo chiaro", "Solo scuro"};
+        String[] themeOptions = {"Segui sistema", "Chiaro", "Scuro"};
         ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, themeOptions);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerTheme.setAdapter(adapter);

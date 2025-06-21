@@ -1,4 +1,4 @@
-package com.gianmarco.securenotes;
+package com.gianmarco.securenotes.fragment;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -19,21 +19,25 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.lifecycle.ViewModelProvider;
 
+import com.gianmarco.securenotes.ArchivePinManager;
+import com.gianmarco.securenotes.MainActivity;
+import com.gianmarco.securenotes.R;
+import com.gianmarco.securenotes.file.SecureFile;
 import com.gianmarco.securenotes.adapter.SecureFileAdapter;
+import com.gianmarco.securenotes.file.SecureFileRepository;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
+import com.gianmarco.securenotes.viewmodel.ArchiveViewModel;
+
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.ArrayList;
 
 public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFileClickListener, SecureFileAdapter.OnFileDeleteListener {
 
@@ -44,6 +48,7 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
     private SecureFileRepository fileRepository;
     private ArchivePinManager archivePinManager;
     private boolean archiveUnlocked = false;
+    private ArchiveViewModel viewModel;
 
     // ActivityResultLauncher per la selezione dei file
     private final ActivityResultLauncher<Intent> filePickerLauncher = registerForActivityResult(
@@ -64,6 +69,14 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
         try {
             fileRepository = new SecureFileRepository(requireContext());
             archivePinManager = new ArchivePinManager(requireContext());
+            // Inizializza il ViewModel con il repository
+            viewModel = new ViewModelProvider(this, new ViewModelProvider.Factory() {
+                @NonNull
+                @Override
+                public <T extends androidx.lifecycle.ViewModel> T create(@NonNull Class<T> modelClass) {
+                    return (T) new ArchiveViewModel(fileRepository);
+                }
+            }).get(ArchiveViewModel.class);
         } catch (Exception e) {
             e.printStackTrace();
             Toast.makeText(requireContext(), "Errore nell'inizializzazione dell'archivio", Toast.LENGTH_SHORT).show();
@@ -109,15 +122,13 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
     }
 
     private void setupArchiveContent() {
-        // Osserva i file
-        if (fileRepository != null) {
-            fileRepository.getAllFiles().observe(getViewLifecycleOwner(), files -> {
-                if (files != null) {
-                    fileAdapter.updateFiles(files);
-                    updateEmptyState(files.isEmpty());
-                }
-            });
-        }
+        // Osserva i file dal ViewModel
+        viewModel.getFiles().observe(getViewLifecycleOwner(), files -> {
+            if (files != null) {
+                fileAdapter.updateFiles(files);
+                updateEmptyState(files.isEmpty());
+            }
+        });
     }
 
     private void showArchivePinDialog() {
@@ -155,7 +166,7 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
     }
 
     public void showFileTypeMenu() {
-        String[] options = {"Immagine", "PDF", "Documenti", "Tutti i file"};
+        String[] options = {"Immagine", "PDF", "Documenti"};
         
         androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(requireContext());
         builder.setTitle("Seleziona tipo di file");
@@ -169,9 +180,6 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
                     break;
                 case 2: // Documenti (solo file di testo)
                     pickFile("text/*");
-                    break;
-                case 3: // Tutti i file
-                    pickFile("*/*");
                     break;
             }
         });
@@ -198,7 +206,7 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
             }
 
             // Carica il file
-            fileRepository.uploadFile(fileUri, fileName, mimeType, null);
+            viewModel.uploadFile(fileUri, fileName, mimeType, null);
             
             Snackbar.make(requireView(), "File caricato con successo", Snackbar.LENGTH_SHORT).show();
             
@@ -248,7 +256,7 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
     @Override
     public void onFileClick(SecureFile secureFile) {
         try {
-            InputStream inputStream = fileRepository.loadFile(secureFile.getFileId());
+            InputStream inputStream = viewModel.loadFile(secureFile.getFileId());
             if (secureFile.isImage()) {
                 showImageFile(secureFile, inputStream);
             } else if (secureFile.isPdf()) {
@@ -443,16 +451,14 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
 
     @Override
     public void onFileDelete(SecureFile secureFile) {
-        // Conferma eliminazione
-        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(requireContext());
-        builder.setTitle("Elimina file");
-        builder.setMessage("Sei sicuro di voler eliminare il file \"" + secureFile.getOriginalFileName() + "\"?");
-        builder.setPositiveButton("Elimina", (dialog, which) -> {
-            fileRepository.deleteFile(secureFile);
-            Snackbar.make(requireView(), "File eliminato", Snackbar.LENGTH_SHORT).show();
-        });
-        builder.setNegativeButton("Annulla", null);
-        builder.show();
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Elimina file")
+                .setMessage("Sei sicuro di voler eliminare il file '" + secureFile.getOriginalFileName() + "'?")
+                .setPositiveButton("Elimina", (dialog, which) -> {
+                    viewModel.deleteFile(secureFile);
+                })
+                .setNegativeButton("Annulla", null)
+                .show();
     }
 
     private void openPdfWithExternalApp(File tempFile) {

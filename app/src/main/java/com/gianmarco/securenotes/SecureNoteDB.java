@@ -1,4 +1,4 @@
-package com.gianmarco.securenotes.note;
+package com.gianmarco.securenotes;
 
 import android.content.Context;
 import android.util.Log;
@@ -7,9 +7,10 @@ import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
-import com.gianmarco.securenotes.PassphraseManager;
 import com.gianmarco.securenotes.file.SecureFile;
 import com.gianmarco.securenotes.file.SecureFileDao;
+import com.gianmarco.securenotes.note.Note;
+import com.gianmarco.securenotes.note.NoteDao;
 
 import net.sqlcipher.database.SupportFactory;
 

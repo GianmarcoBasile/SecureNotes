@@ -1,4 +1,4 @@
-package com.gianmarco.securenotes.fragment;
+package com.gianmarco.securenotes.file;
 
 import android.content.Context;
 import android.net.Uri;
@@ -7,9 +7,6 @@ import android.util.Log;
 import androidx.lifecycle.LiveData;
 
 import com.gianmarco.securenotes.SecureNoteDB;
-import com.gianmarco.securenotes.file.SecureFile;
-import com.gianmarco.securenotes.file.SecureFileDao;
-import com.gianmarco.securenotes.file.SecureFileManager;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,17 +36,10 @@ public class SecureFileRepository {
     public void uploadFile(Uri fileUri, String originalFileName, String mimeType, String noteId) {
         executorService.execute(() -> {
             try {
-                // Salva il file cifrato
                 String fileId = secureFileManager.saveSecureFile(fileUri, originalFileName);
-                
-                // Ottieni la dimensione del file
                 long fileSize = secureFileManager.getFileSize(fileId);
-                
-                // Crea l'entità SecureFile
                 SecureFile secureFile = new SecureFile(fileId, originalFileName, mimeType, fileSize);
                 secureFile.setNoteId(noteId);
-                
-                // Salva nel database
                 secureFileDao.insert(secureFile);
                 
                 Log.d(TAG, "File uploaded successfully: " + originalFileName);
@@ -73,10 +63,7 @@ public class SecureFileRepository {
     public void deleteFile(SecureFile secureFile) {
         executorService.execute(() -> {
             try {
-                // Elimina il file cifrato
                 secureFileManager.deleteSecureFile(secureFile.getFileId());
-                
-                // Elimina dal database
                 secureFileDao.delete(secureFile);
                 
                 Log.d(TAG, "File deleted successfully: " + secureFile.getOriginalFileName());
@@ -93,15 +80,13 @@ public class SecureFileRepository {
     public void deleteFilesByNoteId(String noteId) {
         executorService.execute(() -> {
             try {
-                // Ottieni tutti i file della nota
                 List<SecureFile> files = secureFileDao.getFilesByNoteId(noteId).getValue();
                 if (files != null) {
                     for (SecureFile file : files) {
                         secureFileManager.deleteSecureFile(file.getFileId());
                     }
                 }
-                
-                // Elimina dal database
+
                 secureFileDao.deleteFilesByNoteId(noteId);
                 
                 Log.d(TAG, "All files deleted for note: " + noteId);

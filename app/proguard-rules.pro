@@ -1,21 +1,25 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Mantieni tutte le classi di AndroidX (necessario per compatibilità librerie)
+-keep class androidx.** { *; }
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Mantieni classi usate dalla Biometric API
+-keep class androidx.biometric.** { *; }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Mantieni entità Room (aggiungi qui tutte le tue entity)
+-keep class com.gianmarco.securenotes.note.Note { *; }
+-keep class com.gianmarco.securenotes.file.SecureFile { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Mantieni i metodi annotati Room (costruttori, DAO, ecc)
+-keepclassmembers class * {
+    @androidx.room.* <methods>;
+}
+
+# Mantieni classi per EncryptedSharedPreferences, EncryptedFile, ecc
+-keep class androidx.security.crypto.** { *; }
+
+# Mantieni l'entry point dell'app (decommenta se hai una classe Application custom)
+# -keep class com.gianmarco.securenotes.SecureNotesApplication { *; }
+
+# Per evitare errori con riflessione (es. Gson, Room)
+-keepnames class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}

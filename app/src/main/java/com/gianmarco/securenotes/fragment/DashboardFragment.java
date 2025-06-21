@@ -1,4 +1,4 @@
-package com.gianmarco.securenotes;
+package com.gianmarco.securenotes.fragment;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -8,21 +8,36 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
+
+import com.gianmarco.securenotes.MainActivity;
+import com.gianmarco.securenotes.note.Note;
+import com.gianmarco.securenotes.note.NoteRepository;
+import com.gianmarco.securenotes.R;
 import com.gianmarco.securenotes.adapter.NoteAdapter;
+import com.gianmarco.securenotes.viewmodel.DashboardViewModel;
 
 public class DashboardFragment extends Fragment {
 
     private NoteAdapter noteAdapter;
-    private NoteRepository noteRepository;
+    private DashboardViewModel viewModel;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        noteRepository = new NoteRepository(requireContext());
+        // ViewModelProvider.Factory per passare il repository
+        NoteRepository noteRepository = new NoteRepository(requireContext());
+        viewModel = new ViewModelProvider(this, new ViewModelProvider.Factory() {
+            @NonNull
+            @Override
+            public <T extends androidx.lifecycle.ViewModel> T create(@NonNull Class<T> modelClass) {
+                return (T) new DashboardViewModel(noteRepository);
+            }
+        }).get(DashboardViewModel.class);
     }
 
     @Nullable
@@ -40,7 +55,8 @@ public class DashboardFragment extends Fragment {
         noteAdapter = new NoteAdapter(new ArrayList<>(), this::onNoteClicked, this::onNoteDelete);
         recyclerView.setAdapter(noteAdapter);
 
-        noteRepository.getAllNotes().observe(getViewLifecycleOwner(), notes -> {
+        // Osserva le note dal ViewModel
+        viewModel.getNotes().observe(getViewLifecycleOwner(), notes -> {
             if (notes != null) {
                 noteAdapter.updateNotes(notes);
             }
@@ -48,7 +64,6 @@ public class DashboardFragment extends Fragment {
     }
 
     private void onNoteClicked(Note note) {
-        // Nascondi il menu e il FAB prima di aprire l'editor
         if (getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).hideBottomNavAndFab();
         }
@@ -66,7 +81,7 @@ public class DashboardFragment extends Fragment {
                 .setTitle("Elimina nota")
                 .setMessage("Sei sicuro di voler eliminare la nota '" + note.getTitle() + "'?")
                 .setPositiveButton("Elimina", (dialog, which) -> {
-                    noteRepository.delete(note.getId());
+                    viewModel.deleteNote(note);
                 })
                 .setNegativeButton("Annulla", null)
                 .show();

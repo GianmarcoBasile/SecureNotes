@@ -1,27 +1,57 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="16dp"
-    android:layout_marginBottom="8dp"
-    android:background="@android:drawable/list_selector_background">
+    android:layout_margin="4dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="2dp">
 
-    <TextView
-        android:id="@+id/text_view_title"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:text="Titolo Nota" />
+        android:orientation="horizontal"
+        android:padding="16dp">
 
-    <TextView
-        android:id="@+id/text_view_content_preview"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:maxLines="2"
-        android:ellipsize="end"
-        android:layout_marginTop="4dp"
-        android:text="Anteprima del contenuto della nota..." />
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
 
-</LinearLayout> 
+            <TextView
+                android:id="@+id/text_view_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Titolo Nota"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/text_view_content_preview"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:text="Anteprima del contenuto della nota..."
+                android:textSize="14sp"
+                android:textColor="@android:color/darker_gray" />
+
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/button_delete_note"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="8dp"
+            android:src="@android:drawable/ic_menu_delete"
+            android:contentDescription="Elimina nota" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>
