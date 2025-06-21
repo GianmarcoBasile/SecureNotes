@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">SecureNotes</string>
+    <string name="login">Login</string>
+    <string name="register">Register</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="salva_nota">Salva nota</string>
+    <string name="scrivi_la_tua_nota">Scrivi la tua nota...</string>
+    <string name="crea_nuova_nota">Crea nuova nota</string>
+    <string name="aggiungi_nota">Aggiungi nota</string>
+</resources>
