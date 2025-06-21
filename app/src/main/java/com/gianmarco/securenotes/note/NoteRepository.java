@@ -53,6 +53,10 @@ public class NoteRepository {
         });
     }
 
+    public List<Note> getAllNotesSync() {
+        return noteDao.getAllNotesSync();
+    }
+
     private void handleDatabaseError() {
         try {
             Log.w(TAG, "Attempting to reset database due to error...");

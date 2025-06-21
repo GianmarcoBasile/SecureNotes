@@ -323,18 +323,16 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
 
     private void openPdfDirectly(SecureFile secureFile, InputStream inputStream) {
         try {
-            // Crea un file temporaneo con il nome originale
+            // Crea un file temporaneo con estensione .pdf
             String originalFileName = secureFile.getOriginalFileName();
-            File tempFile = new File(requireContext().getCacheDir(), originalFileName);
-            
-            // Se il file esiste già, aggiungi un timestamp per evitare conflitti
-            if (tempFile.exists()) {
-                String nameWithoutExt = originalFileName.substring(0, originalFileName.lastIndexOf('.'));
-                String extension = getFileExtension(originalFileName);
-                String timestamp = String.valueOf(System.currentTimeMillis());
-                tempFile = new File(requireContext().getCacheDir(), nameWithoutExt + "_" + timestamp + extension);
+            String extension = getFileExtension(originalFileName);
+            if (!extension.equalsIgnoreCase(".pdf")) {
+                extension = ".pdf";
             }
-            
+            String nameWithoutExt = originalFileName.contains(".") ? originalFileName.substring(0, originalFileName.lastIndexOf('.')) : originalFileName;
+            String timestamp = String.valueOf(System.currentTimeMillis());
+            File tempFile = new File(requireContext().getCacheDir(), nameWithoutExt + "_" + timestamp + extension);
+
             try (FileOutputStream fos = new FileOutputStream(tempFile)) {
                 byte[] buffer = new byte[4096];
                 int bytesRead;
@@ -464,19 +462,23 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
                     requireContext().getPackageName() + ".fileprovider",
                     tempFile
             );
-            
+
+            String mimeType = "application/pdf";
+            Log.d("ArchiveFragment", "Apro PDF: uri=" + pdfUri + ", mimeType=" + mimeType + ", file=" + tempFile.getAbsolutePath());
+
             Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(pdfUri, "application/pdf");
-            intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
-            
+            intent.setDataAndType(pdfUri, mimeType);
+            intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            Intent chooser = Intent.createChooser(intent, "Apri PDF con...");
             if (intent.resolveActivity(requireContext().getPackageManager()) != null) {
-                startActivity(intent);
+                startActivity(chooser);
                 // Elimina il file temporaneo dopo 3 secondi
                 scheduleFileDeletion(tempFile, 3000);
             } else {
-                // Se nessuna app è trovata, elimina immediatamente il file
                 tempFile.delete();
-                Toast.makeText(requireContext(), "Nessuna app trovata per visualizzare il PDF", Toast.LENGTH_SHORT).show();
+                Log.e("ArchiveFragment", "Nessuna app trovata per PDF. File: " + tempFile.getAbsolutePath() + ", mimeType: " + mimeType);
+                Toast.makeText(requireContext(), "Nessuna app trovata per visualizzare i PDF. Installa un visualizzatore PDF.", Toast.LENGTH_LONG).show();
             }
         } catch (Exception e) {
             Log.e("ArchiveFragment", "Error opening PDF with external app: " + e.getMessage());

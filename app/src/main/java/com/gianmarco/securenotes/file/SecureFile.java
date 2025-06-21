@@ -1,6 +1,7 @@
 package com.gianmarco.securenotes;
 
 import androidx.room.Entity;
+import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
 @Entity(tableName = "secure_files")
@@ -18,6 +19,7 @@ public class SecureFile {
     // Costruttori
     public SecureFile() {}
 
+    @Ignore
     public SecureFile(String fileId, String originalFileName, String mimeType, long fileSize) {
         this.fileId = fileId;
         this.originalFileName = originalFileName;

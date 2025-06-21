@@ -45,4 +45,7 @@ public interface SecureFileDao {
     
     @Query("SELECT SUM(fileSize) FROM secure_files")
     LiveData<Long> getTotalFileSize();
+    
+    @Query("SELECT * FROM secure_files ORDER BY uploadDate DESC")
+    List<SecureFile> getAllFilesSync();
 } 

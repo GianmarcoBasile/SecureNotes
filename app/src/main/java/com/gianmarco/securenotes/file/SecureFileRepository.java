@@ -1,10 +1,15 @@
-package com.gianmarco.securenotes;
+package com.gianmarco.securenotes.fragment;
 
 import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
 
 import androidx.lifecycle.LiveData;
+
+import com.gianmarco.securenotes.SecureNoteDB;
+import com.gianmarco.securenotes.file.SecureFile;
+import com.gianmarco.securenotes.file.SecureFileDao;
+import com.gianmarco.securenotes.file.SecureFileManager;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -154,5 +159,22 @@ public class SecureFileRepository {
      */
     public boolean fileExists(String fileId) {
         return secureFileManager.fileExists(fileId);
+    }
+
+    public List<SecureFile> getAllFilesSync() {
+        return secureFileDao.getAllFilesSync();
+    }
+
+    public void uploadFileSync(Uri fileUri, String originalFileName, String mimeType, String noteId) {
+        try {
+            String fileId = secureFileManager.saveSecureFile(fileUri, originalFileName);
+            long fileSize = secureFileManager.getFileSize(fileId);
+            SecureFile secureFile = new SecureFile(fileId, originalFileName, mimeType, fileSize);
+            secureFile.setNoteId(noteId);
+            secureFileDao.insert(secureFile);
+            Log.d(TAG, "File uploaded successfully (sync): " + originalFileName);
+        } catch (Exception e) {
+            Log.e(TAG, "Error uploading file (sync): " + e.getMessage());
+        }
     }
 } 

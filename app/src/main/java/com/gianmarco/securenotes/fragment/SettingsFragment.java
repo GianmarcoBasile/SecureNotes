@@ -3,6 +3,7 @@ package com.gianmarco.securenotes;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -17,9 +18,19 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
+import androidx.work.Data;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 
 import java.security.GeneralSecurityException;
 import java.io.IOException;
+import android.os.Build;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.provider.Settings;
+import androidx.appcompat.app.AppCompatDelegate;
 
 public class SettingsFragment extends Fragment {
 
@@ -31,8 +42,47 @@ public class SettingsFragment extends Fragment {
     private Switch switchArchivePin;
     private Button btnChangeArchivePin;
     private Button btnExportBackup;
+    private Button btnImportBackup;
     private ArchivePinManager archivePinManager;
     private SharedPreferences prefs;
+    private String pendingBackupPassword;
+    private String pendingRestorePassword;
+    private android.net.Uri pendingRestoreUri;
+    private final ActivityResultLauncher<Intent> backupFilePickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == android.app.Activity.RESULT_OK && result.getData() != null) {
+                    android.net.Uri uri = result.getData().getData();
+                    if (uri != null && pendingBackupPassword != null) {
+                        androidx.work.Data inputData = new androidx.work.Data.Builder()
+                                .putString("backup_password", pendingBackupPassword)
+                                .putString("backup_uri", uri.toString())
+                                .build();
+                        androidx.work.OneTimeWorkRequest backupRequest = new androidx.work.OneTimeWorkRequest.Builder(BackupWorker.class)
+                                .setInputData(inputData)
+                                .build();
+                        androidx.work.WorkManager.getInstance(requireContext()).enqueue(backupRequest);
+                        android.widget.Toast.makeText(requireContext(), "Backup avviato in background", android.widget.Toast.LENGTH_SHORT).show();
+                        pendingBackupPassword = null;
+                    }
+                } else {
+                    pendingBackupPassword = null;
+                }
+            }
+    );
+    private final androidx.activity.result.ActivityResultLauncher<android.content.Intent> restoreFilePickerLauncher = registerForActivityResult(
+            new androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == android.app.Activity.RESULT_OK && result.getData() != null) {
+                    android.net.Uri uri = result.getData().getData();
+                    if (uri != null) {
+                        pendingRestoreUri = uri;
+                        showRestorePasswordDialog();
+                    }
+                }
+            }
+    );
+    private Spinner spinnerTheme;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -60,10 +110,14 @@ public class SettingsFragment extends Fragment {
         switchArchivePin = view.findViewById(R.id.switch_archive_pin);
         btnChangeArchivePin = view.findViewById(R.id.btn_change_archive_pin);
         btnExportBackup = view.findViewById(R.id.btn_export_backup);
+        btnImportBackup = view.findViewById(R.id.btn_import_backup);
+        spinnerTheme = view.findViewById(R.id.spinner_theme);
 
         setupTimeoutSpinner();
         setupArchivePinSettings();
         setupBackupButton();
+        setupRestoreButton();
+        setupThemeSpinner();
     }
 
     private void setupTimeoutSpinner() {
@@ -98,14 +152,17 @@ public class SettingsFragment extends Fragment {
             }
         }
 
+        final boolean[] isFirstSelection = {true};
         spinnerTimeout.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
                 long selectedTimeout = timeoutValues[position];
                 prefs.edit().putLong(KEY_SESSION_TIMEOUT, selectedTimeout).apply();
-                Toast.makeText(requireContext(), "Timeout sessione aggiornato", Toast.LENGTH_SHORT).show();
+                if (!isFirstSelection[0]) {
+                    Toast.makeText(requireContext(), "Timeout sessione aggiornato", Toast.LENGTH_SHORT).show();
+                }
+                isFirstSelection[0] = false;
             }
-
             @Override
             public void onNothingSelected(android.widget.AdapterView<?> parent) {}
         });
@@ -139,8 +196,37 @@ public class SettingsFragment extends Fragment {
 
     private void setupBackupButton() {
         btnExportBackup.setOnClickListener(v -> {
-            // TODO: Implementare esportazione backup criptato
-            Toast.makeText(requireContext(), "Funzionalità backup in sviluppo", Toast.LENGTH_SHORT).show();
+            // Mostra un dialog per chiedere la password di cifratura
+            AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+            builder.setTitle("Password backup");
+            builder.setMessage("Inserisci una password per cifrare il backup:");
+            final EditText input = new EditText(requireContext());
+            input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+            builder.setView(input);
+            builder.setPositiveButton("Procedi", (dialog, which) -> {
+                String password = input.getText().toString();
+                if (password.length() < 6) {
+                    Toast.makeText(requireContext(), "Password troppo corta", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                pendingBackupPassword = password;
+                Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("application/zip");
+                intent.putExtra(Intent.EXTRA_TITLE, "SecureNotesBackup.zip");
+                backupFilePickerLauncher.launch(intent);
+            });
+            builder.setNegativeButton("Annulla", null);
+            builder.show();
+        });
+    }
+
+    private void setupRestoreButton() {
+        btnImportBackup.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("application/*");
+            restoreFilePickerLauncher.launch(intent);
         });
     }
 
@@ -219,5 +305,76 @@ public class SettingsFragment extends Fragment {
 
         builder.setNegativeButton("Annulla", null);
         builder.show();
+    }
+
+    private void showRestorePasswordDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Password backup");
+        builder.setMessage("Inserisci la password per decifrare il backup:");
+        final EditText input = new EditText(requireContext());
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        builder.setView(input);
+        builder.setPositiveButton("Procedi", (dialog, which) -> {
+            String password = input.getText().toString();
+            if (password.length() < 6) {
+                Toast.makeText(requireContext(), "Password troppo corta", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            pendingRestorePassword = password;
+            startRestoreWorker();
+        });
+        builder.setNegativeButton("Annulla", null);
+        builder.show();
+    }
+
+    private void startRestoreWorker() {
+        if (pendingRestoreUri == null || pendingRestorePassword == null) return;
+        androidx.work.Data inputData = new androidx.work.Data.Builder()
+                .putString("restore_password", pendingRestorePassword)
+                .putString("restore_uri", pendingRestoreUri.toString())
+                .build();
+        androidx.work.OneTimeWorkRequest restoreRequest = new androidx.work.OneTimeWorkRequest.Builder(RestoreBackupWorker.class)
+                .setInputData(inputData)
+                .build();
+        androidx.work.WorkManager.getInstance(requireContext()).enqueue(restoreRequest);
+        Toast.makeText(requireContext(), "Ripristino backup avviato in background", Toast.LENGTH_SHORT).show();
+        pendingRestorePassword = null;
+        pendingRestoreUri = null;
+    }
+
+    private void setupThemeSpinner() {
+        String[] themeOptions = {"Segui sistema", "Solo chiaro", "Solo scuro"};
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, themeOptions);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerTheme.setAdapter(adapter);
+        int savedTheme = prefs.getInt("theme_mode", AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+        int initialSelection = 0;
+        if (savedTheme == AppCompatDelegate.MODE_NIGHT_NO) initialSelection = 1;
+        else if (savedTheme == AppCompatDelegate.MODE_NIGHT_YES) initialSelection = 2;
+        spinnerTheme.setSelection(initialSelection);
+        final int finalInitialSelection = initialSelection;
+        spinnerTheme.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            boolean first = true;
+            int lastSelection = finalInitialSelection;
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                if (first) { first = false; return; }
+                if (position == lastSelection) return;
+                int mode;
+                switch (position) {
+                    case 1: mode = AppCompatDelegate.MODE_NIGHT_NO; break;
+                    case 2: mode = AppCompatDelegate.MODE_NIGHT_YES; break;
+                    default: mode = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
+                }
+                prefs.edit().putInt("theme_mode", mode).apply();
+                ThemeUtils.setTheme(requireContext(), mode);
+                int selectedItemId = ((MainActivity) requireActivity()).getBottomNavigationView().getSelectedItemId();
+                prefs.edit().putInt("last_section", selectedItemId).apply();
+                requireActivity().recreate();
+                lastSelection = position;
+            }
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
     }
 } 

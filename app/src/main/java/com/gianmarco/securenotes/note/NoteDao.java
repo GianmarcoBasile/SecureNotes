@@ -30,4 +30,7 @@ public interface NoteDao {
     @Query("DELETE FROM notes WHERE id = :noteId")
     void deleteById(long noteId);
 
+    @Query("SELECT * FROM notes ORDER BY lastModified DESC")
+    List<Note> getAllNotesSync();
+
 } 

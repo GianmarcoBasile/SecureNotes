@@ -37,7 +37,7 @@ public class DashboardFragment extends Fragment {
         RecyclerView recyclerView = view.findViewById(R.id.recycler_view_notes);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        noteAdapter = new NoteAdapter(new ArrayList<>(), this::onNoteClicked);
+        noteAdapter = new NoteAdapter(new ArrayList<>(), this::onNoteClicked, this::onNoteDelete);
         recyclerView.setAdapter(noteAdapter);
 
         noteRepository.getAllNotes().observe(getViewLifecycleOwner(), notes -> {
@@ -59,5 +59,16 @@ public class DashboardFragment extends Fragment {
                 .replace(R.id.fragment_container, editorFragment)
                 .addToBackStack(null)
                 .commit();
+    }
+
+    private void onNoteDelete(Note note) {
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Elimina nota")
+                .setMessage("Sei sicuro di voler eliminare la nota '" + note.getTitle() + "'?")
+                .setPositiveButton("Elimina", (dialog, which) -> {
+                    noteRepository.delete(note.getId());
+                })
+                .setNegativeButton("Annulla", null)
+                .show();
     }
 } 
