@@ -32,7 +32,6 @@ public class PassphraseManager {
 
             String base64Passphrase = sharedPreferences.getString(KEY_PASSPHRASE, null);
             if (base64Passphrase == null) {
-                // Genera una nuova passphrase di 32 byte
                 byte[] passphraseBytes = new byte[32];
                 new SecureRandom().nextBytes(passphraseBytes);
                 base64Passphrase = Base64.encodeToString(passphraseBytes, Base64.NO_WRAP);
@@ -40,7 +39,6 @@ public class PassphraseManager {
                 return passphraseBytes;
             }
             
-            // Decodifica la passphrase esistente
             return Base64.decode(base64Passphrase, Base64.NO_WRAP);
 
         } catch (Exception e) {

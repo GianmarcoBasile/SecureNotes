@@ -145,7 +145,6 @@ public class SettingsFragment extends Fragment {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerTimeout.setAdapter(adapter);
 
-        // Imposta il valore corrente
         long currentTimeout = prefs.getLong(KEY_SESSION_TIMEOUT, DEFAULT_TIMEOUT);
         for (int i = 0; i < timeoutValues.length; i++) {
             if (timeoutValues[i] == currentTimeout) {
@@ -173,10 +172,8 @@ public class SettingsFragment extends Fragment {
     private void setupArchivePinSettings() {
         if (archivePinManager == null) return;
 
-        // Imposta lo stato corrente dello switch
         switchArchivePin.setChecked(archivePinManager.isArchivePinEnabled());
 
-        // Listener per abilitazione
         switchArchivePin.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChangingPinSwitch) return; // evita loop
             if (isChecked) {
@@ -184,13 +181,11 @@ public class SettingsFragment extends Fragment {
             }
         });
 
-        // Listener per disabilitazione: intercetta il tocco
         switchArchivePin.setOnTouchListener((v, event) -> {
             if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
                 if (switchArchivePin.isChecked()) {
-                    // Sta tentando di disattivare
                     showVerifyPinBeforeDisable();
-                    return true; // consuma l'evento
+                    return true;
                 }
             }
             return false;
@@ -208,7 +203,6 @@ public class SettingsFragment extends Fragment {
     private void setupBackupButton() {
         btnExportBackup.setOnClickListener(v -> {
             if (archivePinManager.isArchivePinEnabled()) {
-                // Chiedi il PIN archivio prima di procedere
                 AlertDialog.Builder pinDialog = new AlertDialog.Builder(requireContext());
                 pinDialog.setTitle("PIN Archivio");
                 pinDialog.setMessage("Inserisci il PIN per esportare il backup:");
@@ -226,13 +220,11 @@ public class SettingsFragment extends Fragment {
                 pinDialog.setNegativeButton("Annulla", null);
                 pinDialog.show();
             } else {
-                // Nessun PIN archivio: procedi direttamente
                 showBackupPasswordDialog();
             }
         });
     }
 
-    // Dialog separato per la password di backup
     private void showBackupPasswordDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle("Password backup");
@@ -402,7 +394,7 @@ public class SettingsFragment extends Fragment {
     }
 
     private void setupThemeSpinner() {
-        String[] themeOptions = {"Segui sistema", "Chiaro", "Scuro"};
+        String[] themeOptions = {"Tema di sistema", "Chiaro", "Scuro"};
         ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, themeOptions);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerTheme.setAdapter(adapter);

@@ -9,14 +9,12 @@ public class SecureFile {
     @PrimaryKey(autoGenerate = true)
     private long id;
     
-    private String fileId; // ID univoco del file cifrato
-    private String originalFileName; // Nome originale del file
-    private String mimeType; // Tipo MIME del file
-    private long fileSize; // Dimensione del file in byte
-    private long uploadDate; // Data di caricamento
-    private String noteId; // ID della nota a cui è allegato (opzionale)
+    private String fileId;
+    private String originalFileName;
+    private String mimeType;
+    private long fileSize;
+    private long uploadDate;
 
-    // Costruttori
     public SecureFile() {}
 
     @Ignore
@@ -75,14 +73,6 @@ public class SecureFile {
 
     public void setUploadDate(long uploadDate) {
         this.uploadDate = uploadDate;
-    }
-
-    public String getNoteId() {
-        return noteId;
-    }
-
-    public void setNoteId(String noteId) {
-        this.noteId = noteId;
     }
 
     // Metodi di utilità

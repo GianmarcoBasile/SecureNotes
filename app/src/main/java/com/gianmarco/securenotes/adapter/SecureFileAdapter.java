@@ -75,7 +75,6 @@ public class SecureFileAdapter extends RecyclerView.Adapter<SecureFileAdapter.Se
             textFileInfo = itemView.findViewById(R.id.text_file_info);
             buttonDelete = itemView.findViewById(R.id.button_delete);
 
-            // Click sul file per visualizzarlo
             itemView.setOnClickListener(v -> {
                 int position = getAdapterPosition();
                 if (position != RecyclerView.NO_POSITION && onFileClickListener != null) {
@@ -83,7 +82,6 @@ public class SecureFileAdapter extends RecyclerView.Adapter<SecureFileAdapter.Se
                 }
             });
 
-            // Click sul bottone elimina
             buttonDelete.setOnClickListener(v -> {
                 int position = getAdapterPosition();
                 if (position != RecyclerView.NO_POSITION && onFileDeleteListener != null) {
@@ -95,7 +93,6 @@ public class SecureFileAdapter extends RecyclerView.Adapter<SecureFileAdapter.Se
         public void bind(SecureFile secureFile) {
             textFileName.setText(secureFile.getOriginalFileName());
             
-            // Imposta l'icona in base al tipo di file
             if (secureFile.isImage()) {
                 imageFileType.setImageResource(android.R.drawable.ic_menu_gallery);
             } else if (secureFile.isPdf()) {
@@ -106,7 +103,6 @@ public class SecureFileAdapter extends RecyclerView.Adapter<SecureFileAdapter.Se
                 imageFileType.setImageResource(android.R.drawable.ic_menu_help);
             }
 
-            // Formatta le informazioni del file
             String fileInfo = String.format("%s • %s • %s",
                     getFileTypeDescription(secureFile.getMimeType()),
                     secureFile.getFormattedFileSize(),

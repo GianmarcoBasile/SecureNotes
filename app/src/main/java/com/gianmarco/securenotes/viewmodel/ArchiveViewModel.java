@@ -23,8 +23,8 @@ public class ArchiveViewModel extends ViewModel {
         fileRepository.deleteFile(file);
     }
 
-    public void uploadFile(android.net.Uri fileUri, String originalFileName, String mimeType, String noteId) {
-        fileRepository.uploadFile(fileUri, originalFileName, mimeType, noteId);
+    public void uploadFile(android.net.Uri fileUri, String originalFileName, String mimeType) {
+        fileRepository.uploadFile(fileUri, originalFileName, mimeType);
     }
 
     public java.io.InputStream loadFile(String fileId) throws java.io.IOException, java.security.GeneralSecurityException {

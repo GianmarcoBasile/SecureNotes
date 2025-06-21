@@ -29,7 +29,7 @@ public class DashboardFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // ViewModelProvider.Factory per passare il repository
+
         NoteRepository noteRepository = new NoteRepository(requireContext());
         viewModel = new ViewModelProvider(this, new ViewModelProvider.Factory() {
             @NonNull
@@ -55,7 +55,6 @@ public class DashboardFragment extends Fragment {
         noteAdapter = new NoteAdapter(new ArrayList<>(), this::onNoteClicked, this::onNoteDelete);
         recyclerView.setAdapter(noteAdapter);
 
-        // Osserva le note dal ViewModel
         viewModel.getNotes().observe(getViewLifecycleOwner(), notes -> {
             if (notes != null) {
                 noteAdapter.updateNotes(notes);
@@ -68,7 +67,6 @@ public class DashboardFragment extends Fragment {
             ((MainActivity) getActivity()).hideBottomNavAndFab();
         }
 
-        // Navigate to EditorFragment with the note
         EditorFragment editorFragment = EditorFragment.newInstance(note.getId());
         getParentFragmentManager().beginTransaction()
                 .replace(R.id.fragment_container, editorFragment)

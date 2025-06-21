@@ -112,7 +112,6 @@ public class EditorFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // Nascondi bottom navigation e FAB
         if (getActivity() instanceof com.gianmarco.securenotes.MainActivity) {
             ((com.gianmarco.securenotes.MainActivity) getActivity()).hideBottomNavAndFab();
         }
@@ -121,7 +120,6 @@ public class EditorFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        // Mostra di nuovo bottom navigation e FAB
         if (getActivity() instanceof com.gianmarco.securenotes.MainActivity) {
             ((com.gianmarco.securenotes.MainActivity) getActivity()).showBottomNavAndFab();
         }

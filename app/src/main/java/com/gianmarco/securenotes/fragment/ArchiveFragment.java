@@ -97,23 +97,11 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
         textEmptyState = view.findViewById(R.id.text_empty_state);
         fabAddFile = view.findViewById(R.id.fab_add_file);
 
-        // Debug: verifica che il FAB sia trovato
-        if (fabAddFile == null) {
-            Log.e("ArchiveFragment", "FAB not found!");
-        } else {
-            Log.d("ArchiveFragment", "FAB found and setting up listener");
-        }
-
         // Setup RecyclerView
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         fileAdapter = new SecureFileAdapter(this, this);
         recyclerView.setAdapter(fileAdapter);
 
-        // Il FAB è ora gestito globalmente da MainActivity
-        // Rimuoviamo il listener locale per evitare conflitti
-        fabAddFile.setVisibility(View.GONE); // Nascondiamo il FAB locale
-
-        // Verifica se è necessario il PIN per l'archivio
         if (archivePinManager != null && archivePinManager.isArchivePinEnabled() && !archiveUnlocked) {
             showArchivePinDialog();
         } else {
@@ -122,7 +110,6 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
     }
 
     private void setupArchiveContent() {
-        // Osserva i file dal ViewModel
         viewModel.getFiles().observe(getViewLifecycleOwner(), files -> {
             if (files != null) {
                 fileAdapter.updateFiles(files);
@@ -149,13 +136,11 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
                 Toast.makeText(requireContext(), "Archivio sbloccato", Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(requireContext(), "PIN non corretto", Toast.LENGTH_SHORT).show();
-                // Richiedi di nuovo il PIN
                 showArchivePinDialog();
             }
         });
 
         builder.setNegativeButton("Annulla", (dialog, which) -> {
-            // Torna alla sezione note
             if (getActivity() instanceof MainActivity) {
                 ((MainActivity) getActivity()).getBottomNavigationView().setSelectedItemId(R.id.nav_notes);
             }
@@ -198,20 +183,14 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
             String fileName = getFileName(fileUri);
             String mimeType = getMimeTypeFromExtension(fileName);
             
-            Log.d("ArchiveFragment", "File selected: " + fileName);
-            Log.d("ArchiveFragment", "Detected MIME type: " + mimeType);
-            
             if (fileName == null) {
                 fileName = "File_" + System.currentTimeMillis();
             }
 
-            // Carica il file
-            viewModel.uploadFile(fileUri, fileName, mimeType, null);
-            
+            viewModel.uploadFile(fileUri, fileName, mimeType);
             Snackbar.make(requireView(), "File caricato con successo", Snackbar.LENGTH_SHORT).show();
-            
         } catch (Exception e) {
-            Log.e("ArchiveFragment", "Error handling file selection: " + e.getMessage(), e);
+            Log.e("ArchiveFragment", "Errore nella gestione della selezione del file: " + e.getMessage(), e);
             Snackbar.make(requireView(), "Errore nel caricamento del file", Snackbar.LENGTH_LONG).show();
         }
     }
@@ -263,11 +242,9 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
                 openPdfDirectly(secureFile, inputStream);
             } else if (isTextDocument(secureFile)) {
                 openTextFileWithExternalApp(secureFile, inputStream);
-            } else {
-                shareFile(secureFile, inputStream);
             }
         } catch (Exception e) {
-            Log.e("ArchiveFragment", "Error opening file: " + e.getMessage());
+            Log.e("ArchiveFragment", "Errore nell'apertura del file: " + e.getMessage());
             Toast.makeText(requireContext(), "Errore nell'apertura del file", Toast.LENGTH_SHORT).show();
         }
     }
@@ -276,7 +253,6 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
         String mime = file.getMimeType();
         String fileName = file.getOriginalFileName().toLowerCase();
         
-        // Controlla MIME type
         if (mime != null && mime.startsWith("text/")) {
             return true;
         }
@@ -297,7 +273,6 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
     }
 
     private void showImageFile(SecureFile secureFile, InputStream inputStream) {
-        // Crea un dialog per mostrare l'immagine
         androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(requireContext());
         builder.setTitle(secureFile.getOriginalFileName());
         
@@ -309,7 +284,6 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
         imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
         imageView.setAdjustViewBounds(true);
         
-        // Aggiungi padding per creare spazio tra titolo e immagine
         int padding = (int) (16 * requireContext().getResources().getDisplayMetrics().density);
         imageView.setPadding(padding, padding, padding, padding);
         
@@ -319,7 +293,7 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
             imageView.setImageBitmap(bitmap);
             inputStream.close();
         } catch (Exception e) {
-            Log.e("ArchiveFragment", "Error loading image: " + e.getMessage());
+            Log.e("ArchiveFragment", "Errore nel caricamento dell'immagine: " + e.getMessage());
             Toast.makeText(requireContext(), "Errore nel caricamento dell'immagine", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -331,12 +305,11 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
 
     private void openPdfDirectly(SecureFile secureFile, InputStream inputStream) {
         try {
-            // Crea un file temporaneo con estensione .pdf
             String originalFileName = secureFile.getOriginalFileName();
             String extension = getFileExtension(originalFileName);
-            if (!extension.equalsIgnoreCase(".pdf")) {
-                extension = ".pdf";
-            }
+            // if (!extension.equalsIgnoreCase(".pdf")) {
+            //     extension = ".pdf";
+            // }
             String nameWithoutExt = originalFileName.contains(".") ? originalFileName.substring(0, originalFileName.lastIndexOf('.')) : originalFileName;
             String timestamp = String.valueOf(System.currentTimeMillis());
             File tempFile = new File(requireContext().getCacheDir(), nameWithoutExt + "_" + timestamp + extension);
@@ -351,18 +324,16 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
             inputStream.close();
             openPdfWithExternalApp(tempFile);
         } catch (Exception e) {
-            Log.e("ArchiveFragment", "Error opening PDF: " + e.getMessage());
+            Log.e("ArchiveFragment", "Errore nell'apertura del PDF: " + e.getMessage());
             Toast.makeText(requireContext(), "Errore nell'apertura del PDF", Toast.LENGTH_SHORT).show();
         }
     }
 
     private void openTextFileWithExternalApp(SecureFile secureFile, InputStream inputStream) {
         try {
-            // Crea un file temporaneo con il nome originale
             String originalFileName = secureFile.getOriginalFileName();
             File tempFile = new File(requireContext().getCacheDir(), originalFileName);
             
-            // Se il file esiste già, aggiungi un timestamp per evitare conflitti
             if (tempFile.exists()) {
                 String nameWithoutExt = originalFileName.substring(0, originalFileName.lastIndexOf('.'));
                 String extension = getFileExtension(originalFileName);
@@ -380,65 +351,8 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
             inputStream.close();
             openTextFileWithExternalApp(tempFile, originalFileName);
         } catch (Exception e) {
-            Log.e("ArchiveFragment", "Error opening text file: " + e.getMessage());
+            Log.e("ArchiveFragment", "Errore nell'apertura del file di testo: " + e.getMessage());
             Toast.makeText(requireContext(), "Errore nell'apertura del file di testo", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void shareFile(SecureFile secureFile, InputStream inputStream) {
-        try {
-            File tempFile;
-            
-            if (inputStream != null) {
-                // Crea un file temporaneo
-                String extension = getFileExtension(secureFile.getOriginalFileName());
-                tempFile = File.createTempFile("secure_file_", extension, requireContext().getCacheDir());
-                
-                try (FileOutputStream fos = new FileOutputStream(tempFile)) {
-                    byte[] buffer = new byte[4096];
-                    int bytesRead;
-                    while ((bytesRead = inputStream.read(buffer)) != -1) {
-                        fos.write(buffer, 0, bytesRead);
-                    }
-                }
-                inputStream.close();
-            } else {
-                // Il file è già stato creato, cerca il file temporaneo più recente
-                String extension = getFileExtension(secureFile.getOriginalFileName());
-                File cacheDir = requireContext().getCacheDir();
-                File[] files = cacheDir.listFiles((dir, name) -> name.endsWith(extension));
-                
-                if (files != null && files.length > 0) {
-                    // Usa il file più recente
-                    tempFile = files[0];
-                    for (File file : files) {
-                        if (file.lastModified() > tempFile.lastModified()) {
-                            tempFile = file;
-                        }
-                    }
-                } else {
-                    throw new IOException("File temporaneo non trovato");
-                }
-            }
-            
-            // Condividi il file
-            Uri fileUri = androidx.core.content.FileProvider.getUriForFile(
-                    requireContext(),
-                    requireContext().getPackageName() + ".fileprovider",
-                    tempFile
-            );
-            
-            Intent shareIntent = new Intent(Intent.ACTION_SEND);
-            shareIntent.setType(secureFile.getMimeType());
-            shareIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
-            shareIntent.putExtra(Intent.EXTRA_SUBJECT, secureFile.getOriginalFileName());
-            shareIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            
-            startActivity(Intent.createChooser(shareIntent, "Condividi file"));
-            
-        } catch (Exception e) {
-            Log.e("ArchiveFragment", "Error sharing file: " + e.getMessage());
-            Toast.makeText(requireContext(), "Errore nella condivisione del file", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -502,7 +416,7 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
             
             // Determina il MIME type dall'estensione originale
             String mimeType = getMimeTypeFromExtension(originalFileName);
-            Log.d("ArchiveFragment", "Original file: " + originalFileName + ", MIME type: " + mimeType);
+            Log.d("ArchiveFragment", "File originale: " + originalFileName + ", MIME type: " + mimeType);
             
             // Prova prima con il MIME type specifico
             Intent intent = new Intent(Intent.ACTION_VIEW);
@@ -510,23 +424,23 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
             intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
             intent.putExtra(Intent.EXTRA_SUBJECT, originalFileName);
             
-            if (intent.resolveActivity(requireContext().getPackageManager()) != null) {
-                startActivity(intent);
-                // Elimina il file temporaneo dopo 3 secondi
-                scheduleFileDeletion(tempFile, 3000);
-                return;
-            }
+            // if (intent.resolveActivity(requireContext().getPackageManager()) != null) {
+            //     startActivity(intent);
+            //     // Elimina il file temporaneo dopo 3 secondi
+            //     scheduleFileDeletion(tempFile, 3000);
+            //     return;
+            // }
             
-            // Se non funziona, prova con text/plain come fallback
-            Log.d("ArchiveFragment", "Specific MIME type failed, trying text/plain");
-            intent.setDataAndType(textUri, "text/plain");
+            // // Se non funziona, prova con text/plain come fallback
+            // Log.d("ArchiveFragment", "Tipo MIME specifico non riuscito, provo text/plain");
+            // intent.setDataAndType(textUri, "text/plain");
             
-            if (intent.resolveActivity(requireContext().getPackageManager()) != null) {
-                startActivity(intent);
-                // Elimina il file temporaneo dopo 3 secondi
-                scheduleFileDeletion(tempFile, 3000);
-                return;
-            }
+            // if (intent.resolveActivity(requireContext().getPackageManager()) != null) {
+            //     startActivity(intent);
+            //     // Elimina il file temporaneo dopo 3 secondi
+            //     scheduleFileDeletion(tempFile, 3000);
+            //     return;
+            // }
             
             // Se ancora non funziona, prova con application/octet-stream
             Log.d("ArchiveFragment", "text/plain failed, trying application/octet-stream");
@@ -544,7 +458,7 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
             Toast.makeText(requireContext(), "Nessuna app trovata per visualizzare il file di testo", Toast.LENGTH_SHORT).show();
             
         } catch (Exception e) {
-            Log.e("ArchiveFragment", "Error opening text file with external app: " + e.getMessage());
+            Log.e("ArchiveFragment", "Errore nell'apertura del file di testo con app esterna: " + e.getMessage());
             Toast.makeText(requireContext(), "Errore nell'apertura del file di testo", Toast.LENGTH_SHORT).show();
         }
     }

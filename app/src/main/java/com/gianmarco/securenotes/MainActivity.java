@@ -44,11 +44,9 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // Applica la preferenza tema prima di tutto
         int themeMode = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getInt("theme_mode", androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
         androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(themeMode);
 
-        // Se sto cambiando solo il tema, salto autenticazione
         if (ThemeUtils.shouldSkipAuth(this)) {
             super.onCreate(savedInstanceState);
             setContentView(R.layout.activity_main);
@@ -67,15 +65,12 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
-        // Riferimenti agli elementi dell'interfaccia
         bottomNavigationView = findViewById(R.id.bottom_navigation);
         fab = findViewById(R.id.fab_add_note);
         fragmentContainer = findViewById(R.id.fragment_container);
         
-        // Nascondi completamente l'interfaccia finché non c'è autenticazione
         hideUI();
         
-        // Root detection
         RootBeer rootBeer = new RootBeer(this);
         if (rootBeer.isRooted()) {
             Toast.makeText(this, "Dispositivo rootato! L'app verrà chiusa per sicurezza.", Toast.LENGTH_LONG).show();
@@ -83,7 +78,6 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // All'avvio, richiedi autenticazione
         requestAuthenticationIfNeeded();
 
         setupBottomNavigation();
@@ -92,7 +86,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // Ogni volta che l'app torna in foreground, controlla il timeout
         if (!isAuthenticated || isSessionExpired()) {
             hideUI();
             requestAuthenticationIfNeeded();
@@ -104,8 +97,6 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == 1002) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permesso concesso, puoi inviare notifiche
-                // testNotifica(); // RIMOSSO
             } else {
                 android.widget.Toast.makeText(this, "Permesso notifiche negato: le notifiche non saranno mostrate", android.widget.Toast.LENGTH_LONG).show();
             }
@@ -185,14 +176,12 @@ public class MainActivity extends AppCompatActivity {
                 .commit();
     }
 
-    // Nasconde completamente l'interfaccia utente
     private void hideUI() {
         fragmentContainer.setVisibility(View.GONE);
         bottomNavigationView.setVisibility(View.GONE);
         fab.hide();
     }
 
-    // Mostra l'interfaccia utente dopo l'autenticazione
     private void showUI() {
         fragmentContainer.setVisibility(View.VISIBLE);
         bottomNavigationView.setVisibility(View.VISIBLE);
@@ -223,7 +212,6 @@ public class MainActivity extends AppCompatActivity {
             if (itemId == R.id.nav_notes) {
                 fab.show();
                 fab.setOnClickListener(v -> {
-                    // Apri EditorFragment per nuova nota
                     getSupportFragmentManager()
                         .beginTransaction()
                         .replace(R.id.fragment_container, com.gianmarco.securenotes.fragment.EditorFragment.newInstance(-1))
@@ -235,7 +223,6 @@ public class MainActivity extends AppCompatActivity {
             } else if (itemId == R.id.nav_archive) {
                 fab.show();
                 fab.setOnClickListener(v -> {
-                    // Trova il fragment attuale e chiama showFileTypeMenu()
                     androidx.fragment.app.Fragment current = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
                     if (current instanceof com.gianmarco.securenotes.fragment.ArchiveFragment) {
                         ((com.gianmarco.securenotes.fragment.ArchiveFragment) current).showFileTypeMenu();

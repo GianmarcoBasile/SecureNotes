@@ -22,7 +22,6 @@ public class ArchivePinManager {
     public ArchivePinManager(Context context) throws GeneralSecurityException, IOException {
         this.context = context.getApplicationContext();
         
-        // Crea una chiave master per cifrare le SharedPreferences
         MasterKey masterKey = new MasterKey.Builder(context)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                 .build();
@@ -36,45 +35,32 @@ public class ArchivePinManager {
         );
     }
 
-    /**
-     * Verifica se il PIN dell'archivio è abilitato
-     */
     public boolean isArchivePinEnabled() {
         return encryptedPrefs.getBoolean(KEY_ARCHIVE_PIN_ENABLED, false);
     }
 
-    /**
-     * Abilita o disabilita il PIN dell'archivio
-     */
     public void setArchivePinEnabled(boolean enabled) {
         encryptedPrefs.edit().putBoolean(KEY_ARCHIVE_PIN_ENABLED, enabled).apply();
-        Log.d(TAG, "Archive PIN enabled: " + enabled);
+        Log.d(TAG, "PIN archivio:" + enabled);
     }
 
-    /**
-     * Imposta il PIN dell'archivio (viene salvato come hash)
-     */
     public void setArchivePin(String pin) {
         if (pin == null || pin.trim().isEmpty()) {
-            throw new IllegalArgumentException("PIN non può essere vuoto");
+            throw new IllegalArgumentException("Il PIN non può essere vuoto");
         }
         
-        // Crea un hash del PIN per sicurezza
         String pinHash = createPinHash(pin);
         encryptedPrefs.edit()
                 .putString(KEY_ARCHIVE_PIN_HASH, pinHash)
                 .putBoolean(KEY_ARCHIVE_PIN_ENABLED, true)
                 .apply();
         
-        Log.d(TAG, "Archive PIN impostato");
+        Log.d(TAG, "PIN archivio impostato");
     }
 
-    /**
-     * Verifica se il PIN fornito è corretto
-     */
     public boolean verifyArchivePin(String pin) {
         if (!isArchivePinEnabled()) {
-            return true; // Se non è abilitato, sempre vero
+            return true;
         }
         
         if (pin == null || pin.trim().isEmpty()) {
@@ -89,27 +75,20 @@ public class ArchivePinManager {
         String inputHash = createPinHash(pin);
         boolean isValid = storedHash.equals(inputHash);
         
-        Log.d(TAG, "Archive PIN verification: " + isValid);
+        Log.d(TAG, "Verifica PIN archivio: " + isValid);
         return isValid;
     }
 
-    /**
-     * Rimuove il PIN dell'archivio
-     */
     public void removeArchivePin() {
         encryptedPrefs.edit()
                 .remove(KEY_ARCHIVE_PIN_HASH)
                 .putBoolean(KEY_ARCHIVE_PIN_ENABLED, false)
                 .apply();
         
-        Log.d(TAG, "Archive PIN rimosso");
+        Log.d(TAG, "PIN archivio rimosso");
     }
 
-    /**
-     * Crea un hash semplice del PIN per sicurezza
-     */
     private String createPinHash(String pin) {
-        // Implementazione semplice - in produzione usare algoritmi più sicuri
         int hash = pin.hashCode();
         return String.valueOf(hash);
     }

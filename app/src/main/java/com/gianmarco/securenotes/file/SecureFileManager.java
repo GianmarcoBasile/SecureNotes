@@ -28,7 +28,6 @@ public class SecureFileManager {
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                 .build();
         
-        // Crea la directory per i file cifrati
         this.secureFilesDirectory = new File(context.getFilesDir(), SECURE_FILES_DIR);
         if (!secureFilesDirectory.exists()) {
             secureFilesDirectory.mkdirs();

@@ -52,7 +52,6 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
         return notes.size();
     }
 
-    // Metodo per aggiornare la lista di note e notificare l'adapter
     public void updateNotes(List<Note> newNotes) {
         this.notes.clear();
         this.notes.addAll(newNotes);

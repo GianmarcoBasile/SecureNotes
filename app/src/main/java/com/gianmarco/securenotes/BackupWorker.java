@@ -60,7 +60,7 @@ public class BackupWorker extends Worker {
         if (password == null || password.length() < 6) return Result.failure();
         Context context = getApplicationContext();
         try {
-            // 1. Estrai tutte le note
+            // Estrai tutte le note
             NoteRepository noteRepo = new NoteRepository(context);
             List<Note> notes = noteRepo.getAllNotesSync();
             if (notes == null) notes = java.util.Collections.emptyList();
@@ -77,12 +77,12 @@ public class BackupWorker extends Worker {
             notesJson.put("notes", notesArray);
             byte[] notesBytes = notesJson.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
 
-            // 2. Estrai tutti i file
+            // Estrai tutti i file
             SecureFileRepository fileRepo = new SecureFileRepository(context);
             List<SecureFile> files = fileRepo.getAllFilesSync();
             if (files == null) files = java.util.Collections.emptyList();
 
-            // 3. Crea zip in memoria
+            // Crea zip in memoria
             ByteArrayOutputStream zipBaos = new ByteArrayOutputStream();
             ZipOutputStream zipOut = new ZipOutputStream(new BufferedOutputStream(zipBaos));
             // Aggiungi le note
@@ -107,7 +107,7 @@ public class BackupWorker extends Worker {
             zipOut.close();
             byte[] zipBytes = zipBaos.toByteArray();
 
-            // 4. Cifra lo zip con AES/PBKDF2
+            // Cifra lo zip con AES/PBKDF2
             SecureRandom random = new SecureRandom();
             byte[] salt = new byte[SALT_LENGTH];
             random.nextBytes(salt);

@@ -33,13 +33,12 @@ public class SecureFileRepository {
     /**
      * Carica un file e lo salva in modo cifrato
      */
-    public void uploadFile(Uri fileUri, String originalFileName, String mimeType, String noteId) {
+    public void uploadFile(Uri fileUri, String originalFileName, String mimeType) {
         executorService.execute(() -> {
             try {
                 String fileId = secureFileManager.saveSecureFile(fileUri, originalFileName);
                 long fileSize = secureFileManager.getFileSize(fileId);
                 SecureFile secureFile = new SecureFile(fileId, originalFileName, mimeType, fileSize);
-                secureFile.setNoteId(noteId);
                 secureFileDao.insert(secureFile);
                 
                 Log.d(TAG, "File uploaded successfully: " + originalFileName);
@@ -75,41 +74,12 @@ public class SecureFileRepository {
     }
 
     /**
-     * Elimina tutti i file di una nota
-     */
-    public void deleteFilesByNoteId(String noteId) {
-        executorService.execute(() -> {
-            try {
-                List<SecureFile> files = secureFileDao.getFilesByNoteId(noteId).getValue();
-                if (files != null) {
-                    for (SecureFile file : files) {
-                        secureFileManager.deleteSecureFile(file.getFileId());
-                    }
-                }
-
-                secureFileDao.deleteFilesByNoteId(noteId);
-                
-                Log.d(TAG, "All files deleted for note: " + noteId);
-                
-            } catch (Exception e) {
-                Log.e(TAG, "Error deleting files for note: " + e.getMessage());
-            }
-        });
-    }
-
-    /**
      * Ottieni tutti i file
      */
     public LiveData<List<SecureFile>> getAllFiles() {
         return secureFileDao.getAllFiles();
     }
 
-    /**
-     * Ottieni i file di una nota specifica
-     */
-    public LiveData<List<SecureFile>> getFilesByNoteId(String noteId) {
-        return secureFileDao.getFilesByNoteId(noteId);
-    }
 
     /**
      * Ottieni un file specifico
@@ -123,13 +93,6 @@ public class SecureFileRepository {
      */
     public LiveData<Integer> getFileCount() {
         return secureFileDao.getFileCount();
-    }
-
-    /**
-     * Ottieni il conteggio dei file di una nota
-     */
-    public LiveData<Integer> getFileCountByNoteId(String noteId) {
-        return secureFileDao.getFileCountByNoteId(noteId);
     }
 
     /**
@@ -155,11 +118,10 @@ public class SecureFileRepository {
             String fileId = secureFileManager.saveSecureFile(fileUri, originalFileName);
             long fileSize = secureFileManager.getFileSize(fileId);
             SecureFile secureFile = new SecureFile(fileId, originalFileName, mimeType, fileSize);
-            secureFile.setNoteId(noteId);
             secureFileDao.insert(secureFile);
-            Log.d(TAG, "File uploaded successfully (sync): " + originalFileName);
+            Log.d(TAG, "File caricato con successo: " + originalFileName);
         } catch (Exception e) {
-            Log.e(TAG, "Error uploading file (sync): " + e.getMessage());
+            Log.e(TAG, "Errore nel caricamento del file: " + e.getMessage());
         }
     }
 } 

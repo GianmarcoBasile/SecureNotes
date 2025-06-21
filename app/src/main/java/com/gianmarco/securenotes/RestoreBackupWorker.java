@@ -50,7 +50,6 @@ public class RestoreBackupWorker extends Worker {
         int filesImported = 0;
         try {
             Log.d(TAG, "Apro lo stream del file di backup: " + uriString);
-            // Leggi salt e IV dal file
             try (InputStream in = context.getContentResolver().openInputStream(srcUri)) {
                 if (in == null) throw new Exception("Impossibile aprire il file di backup");
                 byte[] salt = new byte[16];
