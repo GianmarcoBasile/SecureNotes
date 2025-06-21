@@ -113,6 +113,7 @@ public class MainActivity extends AppCompatActivity {
     // Richiede autenticazione se necessario
     private void requestAuthenticationIfNeeded() {
         isAuthenticated = false;
+
         BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
                 .setTitle("Sblocca SecureNotes")
                 .setSubtitle("Autenticati per accedere alle tue note")
@@ -164,9 +165,10 @@ public class MainActivity extends AppCompatActivity {
         if (canAuth == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS) {
             biometricPrompt.authenticate(promptInfo);
         } else {
-            Toast.makeText(this, "Autenticazione biometrica o credenziali di sistema non disponibili", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Autenticazione biometrica o credenziali di sistema necessarie per l'applicazione", Toast.LENGTH_LONG).show();
             finish();
         }
+
     }
 
     private void navigateTo(Fragment fragment) {
