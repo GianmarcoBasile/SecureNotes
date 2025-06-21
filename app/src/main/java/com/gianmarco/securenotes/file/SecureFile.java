@@ -26,7 +26,6 @@ public class SecureFile {
         this.uploadDate = System.currentTimeMillis();
     }
 
-    // Getters e Setters
     public long getId() {
         return id;
     }
@@ -75,7 +74,6 @@ public class SecureFile {
         this.uploadDate = uploadDate;
     }
 
-    // Metodi di utilità
     public String getFormattedFileSize() {
         if (fileSize < 1024) {
             return fileSize + " B";
