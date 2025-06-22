@@ -38,6 +38,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 
 public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFileClickListener, SecureFileAdapter.OnFileDeleteListener {
 
@@ -64,7 +65,7 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
     );
 
     @Override
-    public void onCreate(@Nullable Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         try {
             fileRepository = new SecureFileRepository(requireContext());
@@ -73,7 +74,7 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
             viewModel = new ViewModelProvider(this, new ViewModelProvider.Factory() {
                 @NonNull
                 @Override
-                public <T extends androidx.lifecycle.ViewModel> T create(@NonNull Class<T> modelClass) {
+                public <T extends androidx.lifecycle.ViewModel> T create(Class<T> modelClass) {
                     return (T) new ArchiveViewModel(fileRepository);
                 }
             }).get(ArchiveViewModel.class);
@@ -83,23 +84,21 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
         }
     }
 
-    @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_archive, container, false);
     }
 
     @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+    public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
         recyclerView = view.findViewById(R.id.recycler_view_files);
         textEmptyState = view.findViewById(R.id.text_empty_state);
         fabAddFile = view.findViewById(R.id.fab_add_file);
 
-        // Setup RecyclerView
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        fileAdapter = new SecureFileAdapter(this, this);
+        fileAdapter = new SecureFileAdapter(new ArrayList<>(), this, this);
         recyclerView.setAdapter(fileAdapter);
 
         if (archivePinManager != null && archivePinManager.isArchivePinEnabled() && !archiveUnlocked) {
@@ -202,16 +201,17 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
 
     private String getFileName(Uri uri) {
         String result = null;
-        if (uri.getScheme().equals("content")) {
-            try (android.database.Cursor cursor = requireContext().getContentResolver().query(uri, null, null, null, null)) {
-                if (cursor != null && cursor.moveToFirst()) {
-                    int index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
-                    if (index >= 0) {
-                        result = cursor.getString(index);
-                    }
+        try (android.database.Cursor cursor = requireContext().getContentResolver().query(uri, null, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                if (index >= 0) {
+                    result = cursor.getString(index);
                 }
             }
+        } catch (Exception e) {
+            Log.e("ArchiveFragment", "Errore nella query del nome del file: " + e.getMessage());
         }
+
         if (result == null) {
             result = uri.getPath();
             int cut = result.lastIndexOf('/');
@@ -238,10 +238,23 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
             InputStream inputStream = viewModel.loadFile(secureFile.getFileId());
             if (secureFile.isImage()) {
                 showImageFile(secureFile, inputStream);
-            } else if (secureFile.isPdf()) {
-                openPdfDirectly(secureFile, inputStream);
-            } else if (isTextDocument(secureFile)) {
-                openTextFileWithExternalApp(secureFile, inputStream);
+            } else {
+                // File temporaneo dal flusso decifrato
+                String originalFileName = secureFile.getOriginalFileName();
+                String extension = getFileExtension(originalFileName);
+                String nameWithoutExt = originalFileName.contains(".") ? originalFileName.substring(0, originalFileName.lastIndexOf('.')) : originalFileName;
+                String timestamp = String.valueOf(System.currentTimeMillis());
+                File tempFile = new File(requireContext().getCacheDir(), nameWithoutExt + "_" + timestamp + extension);
+    
+                try (FileOutputStream fos = new FileOutputStream(tempFile)) {
+                    byte[] buffer = new byte[4096];
+                    int bytesRead;
+                    while ((bytesRead = inputStream.read(buffer)) != -1) {
+                        fos.write(buffer, 0, bytesRead);
+                    }
+                }
+                inputStream.close();
+                openFileWithExternalApp(tempFile, originalFileName);
             }
         } catch (Exception e) {
             Log.e("ArchiveFragment", "Errore nell'apertura del file: " + e.getMessage());
@@ -303,56 +316,48 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
         builder.show();
     }
 
-    private void openPdfDirectly(SecureFile secureFile, InputStream inputStream) {
+    private void openFileWithExternalApp(File tempFile, String originalFileName) {
         try {
-            String originalFileName = secureFile.getOriginalFileName();
-            String extension = getFileExtension(originalFileName);
-            // if (!extension.equalsIgnoreCase(".pdf")) {
-            //     extension = ".pdf";
-            // }
-            String nameWithoutExt = originalFileName.contains(".") ? originalFileName.substring(0, originalFileName.lastIndexOf('.')) : originalFileName;
-            String timestamp = String.valueOf(System.currentTimeMillis());
-            File tempFile = new File(requireContext().getCacheDir(), nameWithoutExt + "_" + timestamp + extension);
-
-            try (FileOutputStream fos = new FileOutputStream(tempFile)) {
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-                while ((bytesRead = inputStream.read(buffer)) != -1) {
-                    fos.write(buffer, 0, bytesRead);
+            Uri fileUri = androidx.core.content.FileProvider.getUriForFile(
+                    requireContext(),
+                    requireContext().getPackageName() + ".fileprovider",
+                    tempFile
+            );
+    
+            String mainMimeType = getMimeTypeFromExtension(originalFileName);
+    
+            ArrayList<String> mimeTypes = new ArrayList<>();
+            mimeTypes.add(mainMimeType);
+            if (mainMimeType.startsWith("text/")) {
+                mimeTypes.add("text/plain");
+                mimeTypes.add("application/octet-stream");
+            } else if (mainMimeType.equals("application/pdf")) {
+            } else {
+                mimeTypes.add("application/octet-stream");
+            }
+    
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.putExtra(Intent.EXTRA_SUBJECT, originalFileName);
+    
+            boolean opened = false;
+            for (String mimeType : mimeTypes) {
+                intent.setDataAndType(fileUri, mimeType);
+                if (intent.resolveActivity(requireContext().getPackageManager()) != null) {
+                    startActivity(intent);
+                    scheduleFileDeletion(tempFile, 3000);
+                    opened = true;
+                    break;
                 }
             }
-            inputStream.close();
-            openPdfWithExternalApp(tempFile);
-        } catch (Exception e) {
-            Log.e("ArchiveFragment", "Errore nell'apertura del PDF: " + e.getMessage());
-            Toast.makeText(requireContext(), "Errore nell'apertura del PDF", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void openTextFileWithExternalApp(SecureFile secureFile, InputStream inputStream) {
-        try {
-            String originalFileName = secureFile.getOriginalFileName();
-            File tempFile = new File(requireContext().getCacheDir(), originalFileName);
-            
-            if (tempFile.exists()) {
-                String nameWithoutExt = originalFileName.substring(0, originalFileName.lastIndexOf('.'));
-                String extension = getFileExtension(originalFileName);
-                String timestamp = String.valueOf(System.currentTimeMillis());
-                tempFile = new File(requireContext().getCacheDir(), nameWithoutExt + "_" + timestamp + extension);
+    
+            if (!opened) {
+                tempFile.delete();
+                Toast.makeText(requireContext(), "Nessuna app trovata per aprire il file", Toast.LENGTH_SHORT).show();
             }
-            
-            try (FileOutputStream fos = new FileOutputStream(tempFile)) {
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-                while ((bytesRead = inputStream.read(buffer)) != -1) {
-                    fos.write(buffer, 0, bytesRead);
-                }
-            }
-            inputStream.close();
-            openTextFileWithExternalApp(tempFile, originalFileName);
         } catch (Exception e) {
-            Log.e("ArchiveFragment", "Errore nell'apertura del file di testo: " + e.getMessage());
-            Toast.makeText(requireContext(), "Errore nell'apertura del file di testo", Toast.LENGTH_SHORT).show();
+            Log.e("ArchiveFragment", "Errore nell'apertura del file con app esterna: " + e.getMessage());
+            Toast.makeText(requireContext(), "Errore nell'apertura del file", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -373,94 +378,6 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
                 })
                 .setNegativeButton("Annulla", null)
                 .show();
-    }
-
-    private void openPdfWithExternalApp(File tempFile) {
-        try {
-            Uri pdfUri = androidx.core.content.FileProvider.getUriForFile(
-                    requireContext(),
-                    requireContext().getPackageName() + ".fileprovider",
-                    tempFile
-            );
-
-            String mimeType = "application/pdf";
-            Log.d("ArchiveFragment", "Apro PDF: uri=" + pdfUri + ", mimeType=" + mimeType + ", file=" + tempFile.getAbsolutePath());
-
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(pdfUri, mimeType);
-            intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-            Intent chooser = Intent.createChooser(intent, "Apri PDF con...");
-            if (intent.resolveActivity(requireContext().getPackageManager()) != null) {
-                startActivity(chooser);
-                // Elimina il file temporaneo dopo 3 secondi
-                scheduleFileDeletion(tempFile, 3000);
-            } else {
-                tempFile.delete();
-                Log.e("ArchiveFragment", "Nessuna app trovata per PDF. File: " + tempFile.getAbsolutePath() + ", mimeType: " + mimeType);
-                Toast.makeText(requireContext(), "Nessuna app trovata per visualizzare i PDF. Installa un visualizzatore PDF.", Toast.LENGTH_LONG).show();
-            }
-        } catch (Exception e) {
-            Log.e("ArchiveFragment", "Error opening PDF with external app: " + e.getMessage());
-            Toast.makeText(requireContext(), "Errore nell'apertura del PDF", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void openTextFileWithExternalApp(File tempFile, String originalFileName) {
-        try {
-            Uri textUri = androidx.core.content.FileProvider.getUriForFile(
-                    requireContext(),
-                    requireContext().getPackageName() + ".fileprovider",
-                    tempFile
-            );
-            
-            // Determina il MIME type dall'estensione originale
-            String mimeType = getMimeTypeFromExtension(originalFileName);
-            Log.d("ArchiveFragment", "File originale: " + originalFileName + ", MIME type: " + mimeType);
-            
-            // Prova prima con il MIME type specifico
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(textUri, mimeType);
-            intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
-            intent.putExtra(Intent.EXTRA_SUBJECT, originalFileName);
-            
-            // if (intent.resolveActivity(requireContext().getPackageManager()) != null) {
-            //     startActivity(intent);
-            //     // Elimina il file temporaneo dopo 3 secondi
-            //     scheduleFileDeletion(tempFile, 3000);
-            //     return;
-            // }
-            
-            // // Se non funziona, prova con text/plain come fallback
-            // Log.d("ArchiveFragment", "Tipo MIME specifico non riuscito, provo text/plain");
-            // intent.setDataAndType(textUri, "text/plain");
-            
-            // if (intent.resolveActivity(requireContext().getPackageManager()) != null) {
-            //     startActivity(intent);
-            //     // Elimina il file temporaneo dopo 3 secondi
-            //     scheduleFileDeletion(tempFile, 3000);
-            //     return;
-            // }
-            
-            // Se ancora non funziona, prova con application/octet-stream
-            Log.d("ArchiveFragment", "text/plain failed, trying application/octet-stream");
-            intent.setDataAndType(textUri, "application/octet-stream");
-            
-            if (intent.resolveActivity(requireContext().getPackageManager()) != null) {
-                startActivity(intent);
-                // Elimina il file temporaneo dopo 3 secondi
-                scheduleFileDeletion(tempFile, 3000);
-                return;
-            }
-            
-            // Se nessuna app è trovata, elimina immediatamente il file
-            tempFile.delete();
-            Toast.makeText(requireContext(), "Nessuna app trovata per visualizzare il file di testo", Toast.LENGTH_SHORT).show();
-            
-        } catch (Exception e) {
-            Log.e("ArchiveFragment", "Errore nell'apertura del file di testo con app esterna: " + e.getMessage());
-            Toast.makeText(requireContext(), "Errore nell'apertura del file di testo", Toast.LENGTH_SHORT).show();
-        }
     }
 
     private void scheduleFileDeletion(File file, long delayMillis) {

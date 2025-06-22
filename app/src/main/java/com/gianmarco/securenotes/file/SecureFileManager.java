@@ -68,7 +68,7 @@ public class SecureFileManager {
                 outputStream.write(buffer, 0, bytesRead);
             }
             
-            Log.d(TAG, "File saved securely: " + originalFileName + " -> " + fileId);
+            Log.d(TAG, "File salvato: " + originalFileName + " -> " + fileId);
             return fileId;
             
         } finally {
@@ -76,14 +76,14 @@ public class SecureFileManager {
                 try {
                     inputStream.close();
                 } catch (IOException e) {
-                    Log.w(TAG, "Error closing input stream", e);
+                    Log.w(TAG, "Errore nella chiusura dell'input stream", e);
                 }
             }
             if (outputStream != null) {
                 try {
                     outputStream.close();
                 } catch (IOException e) {
-                    Log.w(TAG, "Error closing output stream", e);
+                    Log.w(TAG, "Errore nella chiusura dell'output stream", e);
                 }
             }
         }
@@ -119,9 +119,9 @@ public class SecureFileManager {
         File encryptedFile = new File(secureFilesDirectory, fileId);
         if (encryptedFile.exists()) {
             if (encryptedFile.delete()) {
-                Log.d(TAG, "File deleted: " + fileId);
+                Log.d(TAG, "File eliminato: " + fileId);
             } else {
-                Log.w(TAG, "Failed to delete file: " + fileId);
+                Log.w(TAG, "Eliminazione del file: " + fileId + " fallita");
             }
         }
     }
@@ -151,12 +151,5 @@ public class SecureFileManager {
      */
     private String generateFileId() {
         return UUID.randomUUID().toString();
-    }
-
-    /**
-     * Ottiene la directory dei file cifrati (per debug)
-     */
-    public File getSecureFilesDirectory() {
-        return secureFilesDirectory;
     }
 } 

@@ -41,10 +41,10 @@ public class SecureFileRepository {
                 SecureFile secureFile = new SecureFile(fileId, originalFileName, mimeType, fileSize);
                 secureFileDao.insert(secureFile);
                 
-                Log.d(TAG, "File uploaded successfully: " + originalFileName);
+                Log.d(TAG, "File caricato con successo: " + originalFileName);
                 
             } catch (Exception e) {
-                Log.e(TAG, "Error uploading file: " + e.getMessage());
+                Log.e(TAG, "Errore nel caricamento del file: " + e.getMessage());
             }
         });
     }
@@ -109,10 +109,19 @@ public class SecureFileRepository {
         return secureFileManager.fileExists(fileId);
     }
 
+
+    // I metodi sincroni mi servono per il worker
+
+    /**
+     * Ottieni tutti i file in modo sincrono
+     */
     public List<SecureFile> getAllFilesSync() {
         return secureFileDao.getAllFilesSync();
     }
 
+    /**
+     * Carica in modo sincrono
+     */
     public void uploadFileSync(Uri fileUri, String originalFileName, String mimeType, String noteId) {
         try {
             String fileId = secureFileManager.saveSecureFile(fileUri, originalFileName);

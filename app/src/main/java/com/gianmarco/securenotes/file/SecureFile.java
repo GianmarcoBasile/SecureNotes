@@ -93,6 +93,12 @@ public class SecureFile {
     }
 
     public boolean isDocument() {
-        return mimeType != null && mimeType.startsWith("text/");
+        return mimeType != null && (mimeType.startsWith("text/") || 
+                mimeType.equals("application/msword") ||
+                mimeType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document") ||
+                mimeType.equals("application/vnd.ms-excel") ||
+                mimeType.equals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") ||
+                mimeType.equals("application/vnd.ms-powerpoint") ||
+                mimeType.equals("application/vnd.openxmlformats-officedocument.presentationml.presentation"));
     }
 } 

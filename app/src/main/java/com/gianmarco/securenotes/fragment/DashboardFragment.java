@@ -15,13 +15,14 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 
 import com.gianmarco.securenotes.MainActivity;
+import com.gianmarco.securenotes.adapter.SecureFileAdapter;
 import com.gianmarco.securenotes.note.Note;
 import com.gianmarco.securenotes.note.NoteRepository;
 import com.gianmarco.securenotes.R;
 import com.gianmarco.securenotes.adapter.NoteAdapter;
 import com.gianmarco.securenotes.viewmodel.DashboardViewModel;
 
-public class DashboardFragment extends Fragment {
+public class DashboardFragment extends Fragment implements NoteAdapter.OnNoteClickListener, NoteAdapter.OnNoteDeleteListener {
 
     private NoteAdapter noteAdapter;
     private DashboardViewModel viewModel;
@@ -52,7 +53,7 @@ public class DashboardFragment extends Fragment {
         RecyclerView recyclerView = view.findViewById(R.id.recycler_view_notes);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        noteAdapter = new NoteAdapter(new ArrayList<>(), this::onNoteClicked, this::onNoteDelete);
+        noteAdapter = new NoteAdapter(new ArrayList<>(), this, this);
         recyclerView.setAdapter(noteAdapter);
 
         viewModel.getNotes().observe(getViewLifecycleOwner(), notes -> {
@@ -62,7 +63,8 @@ public class DashboardFragment extends Fragment {
         });
     }
 
-    private void onNoteClicked(Note note) {
+    @Override
+    public void onNoteClick(Note note) {
         if (getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).hideBottomNavAndFab();
         }
@@ -74,7 +76,8 @@ public class DashboardFragment extends Fragment {
                 .commit();
     }
 
-    private void onNoteDelete(Note note) {
+    @Override
+    public void onNoteDelete(Note note) {
         new androidx.appcompat.app.AlertDialog.Builder(requireContext())
                 .setTitle("Elimina nota")
                 .setMessage("Sei sicuro di voler eliminare la nota '" + note.getTitle() + "'?")

@@ -34,7 +34,8 @@ public class SecureFileAdapter extends RecyclerView.Adapter<SecureFileAdapter.Se
         void onFileDelete(SecureFile secureFile);
     }
 
-    public SecureFileAdapter(OnFileClickListener onFileClickListener, OnFileDeleteListener onFileDeleteListener) {
+    public SecureFileAdapter(List<SecureFile> files, OnFileClickListener onFileClickListener, OnFileDeleteListener onFileDeleteListener) {
+        this.files = files;
         this.onFileClickListener = onFileClickListener;
         this.onFileDeleteListener = onFileDeleteListener;
     }
@@ -58,7 +59,8 @@ public class SecureFileAdapter extends RecyclerView.Adapter<SecureFileAdapter.Se
     }
 
     public void updateFiles(List<SecureFile> newFiles) {
-        this.files = newFiles != null ? newFiles : new ArrayList<>();
+        this.files.clear();
+        this.files.addAll(newFiles);
         notifyDataSetChanged();
     }
 
@@ -118,16 +120,14 @@ public class SecureFileAdapter extends RecyclerView.Adapter<SecureFileAdapter.Se
                 return "Immagine";
             } else if (mimeType.equals("application/pdf")) {
                 return "PDF";
+            } else if (mimeType.equals("application/msword") || mimeType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
+                return "Word";
+            } else if (mimeType.equals("application/vnd.ms-excel") || mimeType.equals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) {
+                return "Excel";
+            } else if (mimeType.equals("application/vnd.ms-powerpoint") || mimeType.equals("application/vnd.openxmlformats-officedocument.presentationml.presentation")) {
+                return "PowerPoint";
             } else if (mimeType.startsWith("text/")) {
                 return "Testo";
-            } else if (mimeType.contains("document")) {
-                return "Documento";
-            } else if (mimeType.contains("word")) {
-                return "Word";
-            } else if (mimeType.contains("excel")) {
-                return "Excel";
-            } else if (mimeType.contains("powerpoint")) {
-                return "PowerPoint";
             } else {
                 return "File";
             }
