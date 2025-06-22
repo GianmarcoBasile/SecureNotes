@@ -16,7 +16,7 @@ public class PassphraseManager {
     private static final String KEY_PASSPHRASE = "db_passphrase";
 
     // Genera e salva una passphrase sicura se non esiste
-    public static byte[] getOrCreatePassphrase(Context context) {
+    public static byte[] getPassphrase(Context context) {
         try {
             MasterKey masterKey = new MasterKey.Builder(context)
                     .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)

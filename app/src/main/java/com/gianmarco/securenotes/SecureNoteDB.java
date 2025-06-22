@@ -39,9 +39,8 @@ public abstract class SecureNoteDB extends RoomDatabase {
     }
 
     private static SecureNoteDB createDatabase(Context context) {
-        // Prima prova a creare/aprire il database normalmente
         try {
-            Log.d(TAG, "Tentando di creare il database normalmente");
+            Log.d(TAG, "Tentando di creare il database");
             return buildDatabase(context);
         } catch (Exception e) {
                 Log.e(TAG, "Impossibile creare il database: " + e.getMessage());
@@ -50,7 +49,7 @@ public abstract class SecureNoteDB extends RoomDatabase {
         }
 
     private static SecureNoteDB buildDatabase(Context context) {
-        final byte[] passphrase = PassphraseManager.getOrCreatePassphrase(context);
+        final byte[] passphrase = PassphraseManager.getPassphrase(context);
         final SupportFactory factory = new SupportFactory(passphrase);
         
         return Room.databaseBuilder(context.getApplicationContext(),

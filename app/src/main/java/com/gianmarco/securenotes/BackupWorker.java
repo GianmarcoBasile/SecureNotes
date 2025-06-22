@@ -46,11 +46,10 @@ public class BackupWorker extends Worker {
     private static final int IV_LENGTH = 16;
     private static final int SALT_LENGTH = 16;
 
-    public BackupWorker(@NonNull Context context, @NonNull WorkerParameters params) {
+    public BackupWorker(Context context, WorkerParameters params) {
         super(context, params);
     }
 
-    @NonNull
     @Override
     public Result doWork() {
         String uriString = getInputData().getString("backup_uri");
