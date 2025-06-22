@@ -87,7 +87,7 @@ public class SettingsFragment extends Fragment {
     private boolean isChangingPinSwitch = false;
 
     @Override
-    public void onCreate(@Nullable Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         
@@ -100,12 +100,12 @@ public class SettingsFragment extends Fragment {
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_settings, container, false);
     }
 
     @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+    public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
         spinnerTimeout = view.findViewById(R.id.spinner_timeout);
@@ -175,7 +175,7 @@ public class SettingsFragment extends Fragment {
         switchArchivePin.setChecked(archivePinManager.isArchivePinEnabled());
 
         switchArchivePin.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChangingPinSwitch) return; // evita loop
+            if (isChangingPinSwitch) return;
             if (isChecked) {
                 showSetPinDialog();
             }

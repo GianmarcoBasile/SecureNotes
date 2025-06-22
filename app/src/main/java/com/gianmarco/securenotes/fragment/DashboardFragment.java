@@ -28,26 +28,21 @@ public class DashboardFragment extends Fragment implements NoteAdapter.OnNoteCli
     private DashboardViewModel viewModel;
 
     @Override
-    public void onCreate(@Nullable Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         NoteRepository noteRepository = new NoteRepository(requireContext());
         viewModel = new ViewModelProvider(this, new ViewModelProvider.Factory() {
-            @NonNull
-            @Override
-            public <T extends androidx.lifecycle.ViewModel> T create(@NonNull Class<T> modelClass) {
+            public <T extends androidx.lifecycle.ViewModel> T create(Class<T> modelClass) {
                 return (T) new DashboardViewModel(noteRepository);
             }
         }).get(DashboardViewModel.class);
     }
 
-    @Nullable
-    @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_dashboard, container, false);
     }
 
-    @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         RecyclerView recyclerView = view.findViewById(R.id.recycler_view_notes);

@@ -38,18 +38,13 @@ public class EditorFragment extends Fragment {
         return fragment;
     }
 
-    public static EditorFragment newInstance() {
-        return newInstance(INVALID_NOTE_ID);
-    }
-
     @Override
-    public void onCreate(@Nullable Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         NoteRepository noteRepository = new NoteRepository(requireContext());
         viewModel = new ViewModelProvider(this, new ViewModelProvider.Factory() {
-            @NonNull
             @Override
-            public <T extends androidx.lifecycle.ViewModel> T create(@NonNull Class<T> modelClass) {
+            public <T extends androidx.lifecycle.ViewModel> T create(Class<T> modelClass) {
                 return (T) new EditorViewModel(noteRepository);
             }
         }).get(EditorViewModel.class);
@@ -58,14 +53,13 @@ public class EditorFragment extends Fragment {
         }
     }
 
-    @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_editor, container, false);
     }
 
     @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+    public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
         titleEditText = view.findViewById(R.id.edit_text_title);
