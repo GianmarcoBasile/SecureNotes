@@ -5,8 +5,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -15,7 +15,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 
 import com.gianmarco.securenotes.MainActivity;
-import com.gianmarco.securenotes.adapter.SecureFileAdapter;
 import com.gianmarco.securenotes.note.Note;
 import com.gianmarco.securenotes.note.NoteRepository;
 import com.gianmarco.securenotes.R;
@@ -47,6 +46,18 @@ public class DashboardFragment extends Fragment implements NoteAdapter.OnNoteCli
         super.onViewCreated(view, savedInstanceState);
         RecyclerView recyclerView = view.findViewById(R.id.recycler_view_notes);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+
+        ViewCompat.setOnApplyWindowInsetsListener(recyclerView, (v, insets) -> {
+            int bottomNavHeightPx = (int) (160 * v.getResources().getDisplayMetrics().density);
+            int systemBottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom;
+            v.setPadding(
+                    v.getPaddingLeft(),
+                    v.getPaddingTop(),
+                    v.getPaddingRight(),
+                    Math.max(bottomNavHeightPx, systemBottom)
+            );
+            return insets;
+        });
 
         noteAdapter = new NoteAdapter(new ArrayList<>(), this, this);
         recyclerView.setAdapter(noteAdapter);

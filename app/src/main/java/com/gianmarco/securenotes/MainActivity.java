@@ -47,7 +47,10 @@ public class MainActivity extends AppCompatActivity {
         int themeMode = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getInt("theme_mode", androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
         androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(themeMode);
 
-        if (ThemeUtils.shouldSkipAuth(this)) {
+        boolean skipAuth = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getBoolean("skip_auth_on_next_start", false);
+
+        if (skipAuth) {
+            getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putBoolean("skip_auth_on_next_start", false).apply();
             super.onCreate(savedInstanceState);
             setContentView(R.layout.activity_main);
             bottomNavigationView = findViewById(R.id.bottom_navigation);

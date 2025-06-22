@@ -29,7 +29,7 @@ public class NoteRepository {
             try {
                 noteDao.insertOrUpdate(note);
             } catch (Exception e) {
-                Log.e(TAG, "Error inserting/updating note: " + e.getMessage());
+                Log.e(TAG, "Error e durante l'inserimento/aggiornamento della nota: " + e.getMessage());
             }
         });
     }
@@ -47,7 +47,7 @@ public class NoteRepository {
             try {
                 noteDao.deleteById(noteId);
             } catch (Exception e) {
-                Log.e(TAG, "Error deleting note: " + e.getMessage());
+                Log.e(TAG, "Errore durante la cancellazione della nota: " + e.getMessage());
             }
         });
     }

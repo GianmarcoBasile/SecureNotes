@@ -12,7 +12,7 @@
         android:padding="8dp"
         android:clipToPadding="false"
         android:paddingTop="16dp"
-        android:paddingBottom="80dp" />
+        android:paddingBottom="96dp" />
 
     <TextView
         android:id="@+id/text_empty_state"

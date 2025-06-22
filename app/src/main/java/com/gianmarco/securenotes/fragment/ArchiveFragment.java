@@ -18,6 +18,8 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -29,6 +31,7 @@ import com.gianmarco.securenotes.R;
 import com.gianmarco.securenotes.file.SecureFile;
 import com.gianmarco.securenotes.adapter.SecureFileAdapter;
 import com.gianmarco.securenotes.file.SecureFileRepository;
+import com.gianmarco.securenotes.viewmodel.SettingsViewModel;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
@@ -50,6 +53,7 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
     private ArchivePinManager archivePinManager;
     private boolean archiveUnlocked = false;
     private ArchiveViewModel viewModel;
+    private SettingsViewModel settingsViewModel;
 
     // ActivityResultLauncher per la selezione dei file
     private final ActivityResultLauncher<Intent> filePickerLauncher = registerForActivityResult(
@@ -70,14 +74,18 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
         try {
             fileRepository = new SecureFileRepository(requireContext());
             archivePinManager = new ArchivePinManager(requireContext());
-            // Inizializza il ViewModel con il repository
             viewModel = new ViewModelProvider(this, new ViewModelProvider.Factory() {
-                @NonNull
-                @Override
                 public <T extends androidx.lifecycle.ViewModel> T create(Class<T> modelClass) {
                     return (T) new ArchiveViewModel(fileRepository);
                 }
             }).get(ArchiveViewModel.class);
+
+            settingsViewModel = new ViewModelProvider(this, new ViewModelProvider.Factory() {
+                public <T extends androidx.lifecycle.ViewModel> T create(Class<T> modelClass) {
+                    return (T) new SettingsViewModel(archivePinManager);
+                }
+            }).get(SettingsViewModel.class);
+
         } catch (Exception e) {
             e.printStackTrace();
             Toast.makeText(requireContext(), "Errore nell'inizializzazione dell'archivio", Toast.LENGTH_SHORT).show();
@@ -101,7 +109,19 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
         fileAdapter = new SecureFileAdapter(new ArrayList<>(), this, this);
         recyclerView.setAdapter(fileAdapter);
 
-        if (archivePinManager != null && archivePinManager.isArchivePinEnabled() && !archiveUnlocked) {
+        ViewCompat.setOnApplyWindowInsetsListener(recyclerView, (v, insets) -> {
+            int bottomNavHeightPx = (int) (160 * v.getResources().getDisplayMetrics().density);
+            int systemBottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom;
+            v.setPadding(
+                v.getPaddingLeft(),
+                v.getPaddingTop(),
+                v.getPaddingRight(),
+                Math.max(bottomNavHeightPx, systemBottom)
+            );
+            return insets;
+        });
+
+        if (archivePinManager != null && settingsViewModel.isArchivePinEnabled() && !archiveUnlocked) {
             showArchivePinDialog();
         } else {
             setupArchiveContent();
@@ -129,7 +149,7 @@ public class ArchiveFragment extends Fragment implements SecureFileAdapter.OnFil
 
         builder.setPositiveButton("Sblocca", (dialog, which) -> {
             String pin = pinInput.getText().toString();
-            if (archivePinManager.verifyArchivePin(pin)) {
+            if (settingsViewModel.verifyPin(pin)) {
                 archiveUnlocked = true;
                 setupArchiveContent();
                 Toast.makeText(requireContext(), "Archivio sbloccato", Toast.LENGTH_SHORT).show();

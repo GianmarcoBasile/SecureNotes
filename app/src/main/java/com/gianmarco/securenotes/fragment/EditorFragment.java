@@ -67,8 +67,7 @@ public class EditorFragment extends Fragment {
         Button saveButton = view.findViewById(R.id.btnSaveNote);
 
         if (currentNoteId != INVALID_NOTE_ID) {
-            viewModel.loadNoteById(currentNoteId);
-            viewModel.getNote().observe(getViewLifecycleOwner(), note -> {
+            viewModel.getNoteById(currentNoteId).observe(getViewLifecycleOwner(), note -> {
                 if (note != null) {
                     currentNote = note;
                     titleEditText.setText(note.getTitle());

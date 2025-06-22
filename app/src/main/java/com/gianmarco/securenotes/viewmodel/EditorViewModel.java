@@ -18,10 +18,8 @@ public class EditorViewModel extends ViewModel {
         return noteLiveData;
     }
 
-    public void loadNoteById(long noteId) {
-        noteRepository.getNoteById(noteId).observeForever(note -> {
-            noteLiveData.setValue(note);
-        });
+    public LiveData<Note> getNoteById(long noteId) {
+        return noteRepository.getNoteById(noteId);
     }
 
     public void saveNote(Note note) {

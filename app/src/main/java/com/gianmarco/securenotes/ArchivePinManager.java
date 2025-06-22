@@ -79,15 +79,6 @@ public class ArchivePinManager {
         return isValid;
     }
 
-    public void removeArchivePin() {
-        encryptedPrefs.edit()
-                .remove(KEY_ARCHIVE_PIN_HASH)
-                .putBoolean(KEY_ARCHIVE_PIN_ENABLED, false)
-                .apply();
-        
-        Log.d(TAG, "PIN archivio rimosso");
-    }
-
     private String createPinHash(String pin) {
         int hash = pin.hashCode();
         return String.valueOf(hash);

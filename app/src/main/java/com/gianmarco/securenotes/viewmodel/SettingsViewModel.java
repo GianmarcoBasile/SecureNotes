@@ -47,6 +47,10 @@ public class SettingsViewModel extends ViewModel {
         return themeModeLiveData;
     }
 
+    public boolean isArchivePinEnabled() {
+        return archivePinManager != null && archivePinManager.isArchivePinEnabled();
+    }
+
     public void enablePin(String pin) {
         archivePinManager.setArchivePin(pin);
         archivePinManager.setArchivePinEnabled(true);
@@ -58,9 +62,10 @@ public class SettingsViewModel extends ViewModel {
         pinEnabledLiveData.setValue(false);
     }
 
-    public void verifyPin(String pin) {
+    public boolean verifyPin(String pin) {
         boolean verified = archivePinManager.verifyArchivePin(pin);
         pinVerifiedLiveData.setValue(verified);
+        return verified;
     }
 
     public void startBackup(Context context, String password, Uri uri) {

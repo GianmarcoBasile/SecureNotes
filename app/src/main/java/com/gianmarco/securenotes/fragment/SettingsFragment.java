@@ -25,13 +25,14 @@ import java.security.GeneralSecurityException;
 import java.io.IOException;
 
 import androidx.appcompat.app.AppCompatDelegate;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.gianmarco.securenotes.ArchivePinManager;
 import com.gianmarco.securenotes.BackupWorker;
 import com.gianmarco.securenotes.MainActivity;
 import com.gianmarco.securenotes.R;
 import com.gianmarco.securenotes.RestoreBackupWorker;
-import com.gianmarco.securenotes.ThemeUtils;
+import com.gianmarco.securenotes.viewmodel.SettingsViewModel;
 
 public class SettingsFragment extends Fragment {
 
@@ -49,27 +50,22 @@ public class SettingsFragment extends Fragment {
     private String pendingBackupPassword;
     private String pendingRestorePassword;
     private android.net.Uri pendingRestoreUri;
+    private SettingsViewModel viewModel;
     private final ActivityResultLauncher<Intent> backupFilePickerLauncher = registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-                if (result.getResultCode() == android.app.Activity.RESULT_OK && result.getData() != null) {
-                    android.net.Uri uri = result.getData().getData();
-                    if (uri != null && pendingBackupPassword != null) {
-                        androidx.work.Data inputData = new androidx.work.Data.Builder()
-                                .putString("backup_password", pendingBackupPassword)
-                                .putString("backup_uri", uri.toString())
-                                .build();
-                        androidx.work.OneTimeWorkRequest backupRequest = new androidx.work.OneTimeWorkRequest.Builder(BackupWorker.class)
-                                .setInputData(inputData)
-                                .build();
-                        androidx.work.WorkManager.getInstance(requireContext()).enqueue(backupRequest);
-                        android.widget.Toast.makeText(requireContext(), "Backup avviato in background", android.widget.Toast.LENGTH_SHORT).show();
-                        pendingBackupPassword = null;
-                    }
-                } else {
+        new ActivityResultContracts.StartActivityForResult(),
+        result -> {
+            if (result.getResultCode() == android.app.Activity.RESULT_OK && result.getData() != null) {
+                android.net.Uri uri = result.getData().getData();
+                if (uri != null && pendingBackupPassword != null) {
+                    // Passa tutto al ViewModel!
+                    viewModel.startBackup(requireContext(), pendingBackupPassword, uri);
+                    android.widget.Toast.makeText(requireContext(), "Backup avviato in background", android.widget.Toast.LENGTH_SHORT).show();
                     pendingBackupPassword = null;
                 }
+            } else {
+                pendingBackupPassword = null;
             }
+        }
     );
     private final androidx.activity.result.ActivityResultLauncher<android.content.Intent> restoreFilePickerLauncher = registerForActivityResult(
             new androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
@@ -89,10 +85,14 @@ public class SettingsFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        
+        prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);    
         try {
             archivePinManager = new ArchivePinManager(requireContext());
+            viewModel = new ViewModelProvider(this, new ViewModelProvider.Factory() {
+                public <T extends androidx.lifecycle.ViewModel> T create(Class<T> modelClass) {
+                    return (T) new SettingsViewModel(archivePinManager);
+                }
+            }).get(SettingsViewModel.class);
         } catch (GeneralSecurityException | IOException e) {
             Toast.makeText(requireContext(), "Errore nell'inizializzazione delle impostazioni", Toast.LENGTH_SHORT).show();
         }
@@ -192,7 +192,7 @@ public class SettingsFragment extends Fragment {
         });
 
         btnChangeArchivePin.setOnClickListener(v -> {
-            if (archivePinManager.isArchivePinEnabled()) {
+            if (viewModel.isArchivePinEnabled()) {
                 showChangePinDialog();
             } else {
                 Toast.makeText(requireContext(), "Abilita prima il PIN archivio", Toast.LENGTH_SHORT).show();
@@ -202,7 +202,7 @@ public class SettingsFragment extends Fragment {
 
     private void setupBackupButton() {
         btnExportBackup.setOnClickListener(v -> {
-            if (archivePinManager.isArchivePinEnabled()) {
+            if (viewModel.isArchivePinEnabled()) {
                 AlertDialog.Builder pinDialog = new AlertDialog.Builder(requireContext());
                 pinDialog.setTitle("PIN Archivio");
                 pinDialog.setMessage("Inserisci il PIN per esportare il backup:");
@@ -211,7 +211,7 @@ public class SettingsFragment extends Fragment {
                 pinDialog.setView(pinInput);
                 pinDialog.setPositiveButton("Procedi", (dialog, which) -> {
                     String pin = pinInput.getText().toString();
-                    if (archivePinManager.verifyArchivePin(pin)) {
+                    if (viewModel.verifyPin(pin)) {
                         showBackupPasswordDialog();
                     } else {
                         Toast.makeText(requireContext(), "PIN errato", Toast.LENGTH_SHORT).show();
@@ -272,7 +272,7 @@ public class SettingsFragment extends Fragment {
             String pin = pinInput.getText().toString();
             if (pin.length() >= 4 && pin.length() <= 8) {
                 try {
-                    archivePinManager.setArchivePin(pin);
+                    viewModel.enablePin(pin);
                     Toast.makeText(requireContext(), "PIN archivio impostato", Toast.LENGTH_SHORT).show();
                 } catch (IllegalArgumentException e) {
                     Toast.makeText(requireContext(), "PIN non valido", Toast.LENGTH_SHORT).show();
@@ -314,14 +314,14 @@ public class SettingsFragment extends Fragment {
             String currentPin = currentPinInput.getText().toString();
             String newPin = newPinInput.getText().toString();
 
-            if (!archivePinManager.verifyArchivePin(currentPin)) {
+            if (!viewModel.verifyPin(currentPin)) {
                 Toast.makeText(requireContext(), "PIN attuale non corretto", Toast.LENGTH_SHORT).show();
                 return;
             }
 
             if (newPin.length() >= 4 && newPin.length() <= 8) {
                 try {
-                    archivePinManager.setArchivePin(newPin);
+                    viewModel.enablePin(newPin);
                     Toast.makeText(requireContext(), "PIN archivio cambiato", Toast.LENGTH_SHORT).show();
                 } catch (IllegalArgumentException e) {
                     Toast.makeText(requireContext(), "Nuovo PIN non valido", Toast.LENGTH_SHORT).show();
@@ -349,25 +349,10 @@ public class SettingsFragment extends Fragment {
                 return;
             }
             pendingRestorePassword = password;
-            startRestoreWorker();
+            viewModel.startRestore(requireContext(), pendingRestorePassword, pendingRestoreUri);
         });
         builder.setNegativeButton("Annulla", null);
         builder.show();
-    }
-
-    private void startRestoreWorker() {
-        if (!isAdded() || pendingRestoreUri == null || pendingRestorePassword == null) return;
-        androidx.work.Data inputData = new androidx.work.Data.Builder()
-                .putString("restore_password", pendingRestorePassword)
-                .putString("restore_uri", pendingRestoreUri.toString())
-                .build();
-        androidx.work.OneTimeWorkRequest restoreRequest = new androidx.work.OneTimeWorkRequest.Builder(RestoreBackupWorker.class)
-                .setInputData(inputData)
-                .build();
-        androidx.work.WorkManager.getInstance(requireContext()).enqueue(restoreRequest);
-        Toast.makeText(requireContext(), "Ripristino backup avviato in background", Toast.LENGTH_SHORT).show();
-        pendingRestorePassword = null;
-        pendingRestoreUri = null;
     }
 
     private void showVerifyPinBeforeDisable() {
@@ -379,8 +364,8 @@ public class SettingsFragment extends Fragment {
         builder.setView(input);
         builder.setPositiveButton("Conferma", (dialog, which) -> {
             String pin = input.getText().toString();
-            if (archivePinManager.verifyArchivePin(pin)) {
-                archivePinManager.setArchivePinEnabled(false);
+            if (viewModel.verifyPin(pin)) {
+                viewModel.disablePin();
                 isChangingPinSwitch = true;
                 switchArchivePin.setChecked(false);
                 isChangingPinSwitch = false;
@@ -417,11 +402,12 @@ public class SettingsFragment extends Fragment {
                     case 2: mode = AppCompatDelegate.MODE_NIGHT_YES; break;
                     default: mode = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
                 }
-                prefs.edit().putInt("theme_mode", mode).apply();
-                ThemeUtils.setTheme(requireContext(), mode);
+                viewModel.setTheme(requireContext(), mode);
+                prefs.edit().putBoolean("skip_auth_on_next_start", true).apply();
+                requireActivity().recreate();
+                
                 int selectedItemId = ((MainActivity) requireActivity()).getBottomNavigationView().getSelectedItemId();
                 prefs.edit().putInt("last_section", selectedItemId).apply();
-                requireActivity().recreate();
                 lastSelection = position;
             }
             @Override
